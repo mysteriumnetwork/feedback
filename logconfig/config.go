@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"text/template"
 
-	"github.com/cihub/seelog"
+	log "github.com/cihub/seelog"
 )
 
 const seewayLogXMLConfigTemplate = `
@@ -52,23 +52,23 @@ func BootstrapWith(opts *LogOptions) {
 	if opts != nil {
 		CurrentLogOptions = opts
 	}
-	newLogger, err := seelog.LoggerFromConfigAsString(buildXmlConfig(*CurrentLogOptions))
+	newLogger, err := log.LoggerFromConfigAsString(buildXmlConfig(*CurrentLogOptions))
 	if err != nil {
-		_ = seelog.Warn("Error parsing seelog configuration", err)
+		_ = log.Warn("Error parsing seelog configuration", err)
 		return
 	}
-	err = seelog.UseLogger(newLogger)
+	err = log.UseLogger(newLogger)
 	if err != nil {
-		_ = seelog.Warn("Error setting new logger for seelog", err)
+		_ = log.Warn("Error setting new logger for seelog", err)
 	}
-	seelog.Infof("Log level: %s", CurrentLogOptions.LogLevel)
+	log.Infof("Log level: %s", CurrentLogOptions.LogLevel)
 }
 
 // Bootstrap loads seelog package into the overall system with debug defaults
 func Bootstrap() {
 	BootstrapWith(
 		&LogOptions{
-			LogLevel: seelog.DebugStr,
+			LogLevel: log.DebugStr,
 		},
 	)
 }

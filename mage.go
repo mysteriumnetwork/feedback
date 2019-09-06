@@ -18,43 +18,12 @@
 package main
 
 import (
-	"flag"
 	"os"
 
-	log "github.com/cihub/seelog"
-	"github.com/mysteriumnetwork/feedback/api"
-	"github.com/mysteriumnetwork/feedback/feedback"
-	"github.com/mysteriumnetwork/feedback/logconfig"
+	"github.com/magefile/mage/mage"
 )
 
-func main() {
-	os.Exit(app())
-}
-
-func app() (retValue int) {
-	configureFromFlags()
-	logconfig.BootstrapWith(logconfig.CurrentLogOptions)
-
-	log.Info("Starting feedback service")
-	defer func() {
-		log.Info("Stopping feedback service")
-		log.Flush()
-	}()
-
-	server := api.NewServer(
-		feedback.NewEndpoint(),
-	)
-
-	err := server.Serve()
-	if err != nil {
-		_ = log.Critical("Critical error occurred: ", err)
-		return -1
-	}
-	return 0
-}
-
-func configureFromFlags() {
-	logconfig.RegisterFlags()
-	flag.Parse()
-	logconfig.Configure()
-}
+// Zero install option.
+// Usage example:
+//   go run mage.go test
+func main() { os.Exit(mage.Main()) }
