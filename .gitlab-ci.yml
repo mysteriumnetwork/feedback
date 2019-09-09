@@ -11,16 +11,15 @@ variables:
   GITHUB_OWNER: mysteriumnetwork
   GITHUB_REPO: feedback
   GOFLAGS: "-count=1" # Supersedes GOCACHE=off, see: https://github.com/golang/go/issues/29378#issuecomment-449383809
-  CGO_ENABLED: 0
 
 test:
   stage: test
   image: golang:1.13.0-alpine3.10
   tags: [docker]
-  script: go run mage.go -v test
+  script: CGO_ENABLED=0 go run mage.go -v test
 
 build:
   stage: build
   image: golang:1.13.0-alpine3.10
   tags: [docker]
-  script: go run mage.go -v build
+  script: CGO_ENABLED=0 go run mage.go -v build
