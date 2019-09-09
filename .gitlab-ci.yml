@@ -1,0 +1,25 @@
+stages:
+  - test
+  - build
+
+variables:
+  BUILD_COMMIT: $CI_COMMIT_SHORT_SHA
+  BUILD_BRANCH: $CI_COMMIT_REF_NAME
+  BUILD_BRANCH_SAFE: $CI_COMMIT_REF_SLUG
+  BUILD_TAG: $CI_COMMIT_TAG
+  BUILD_NUMBER: $CI_PIPELINE_ID
+  GITHUB_OWNER: mysteriumnetwork
+  GITHUB_REPO: feedback
+  GOFLAGS: "-count=1" # Supersedes GOCACHE=off, see: https://github.com/golang/go/issues/29378#issuecomment-449383809
+
+test:
+  stage: test
+  image: golang:1.13.0-alpine3.10
+  tags: [docker]
+  script: go run mage.go -v test
+
+build:
+  stage: build
+  image: golang:1.13.0-alpine3.10
+  tags: [docker]
+  script: go run mage.go -v build
