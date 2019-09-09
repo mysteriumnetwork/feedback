@@ -86,6 +86,7 @@ func app() (retValue int) {
 
 	srvr := server.New(
 		feedback.NewEndpoint(githubReporter, storage),
+		server.NewPingEndpoint(),
 	)
 
 	err = srvr.Serve()
