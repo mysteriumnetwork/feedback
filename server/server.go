@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package api
+package server
 
 import (
 	"errors"
@@ -37,8 +37,8 @@ type Server struct {
 	routes []routes
 }
 
-// NewServer creates a new API server
-func NewServer(routes ...routes) *Server {
+// New creates a new API server
+func New(routes ...routes) *Server {
 	return &Server{
 		routes: routes,
 	}

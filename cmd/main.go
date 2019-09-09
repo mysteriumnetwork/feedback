@@ -18,13 +18,29 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"os"
 
 	log "github.com/cihub/seelog"
-	"github.com/mysteriumnetwork/feedback/api"
 	"github.com/mysteriumnetwork/feedback/feedback"
 	"github.com/mysteriumnetwork/feedback/logconfig"
+	"github.com/mysteriumnetwork/feedback/server"
+	"github.com/mysteriumnetwork/feedback/storage"
+	"github.com/mysteriumnetwork/feedback/target/github"
+)
+
+const (
+	// ENV_AWS_ENDPOINT_URL AWS URL for file upload
+	ENV_AWS_ENDPOINT_URL = "AWS_ENDPOINT_URL"
+	// ENV_AWS_BUCKET AWS bucket for file upload
+	ENV_AWS_BUCKET = "AWS_BUCKET"
+	// ENV_GITHUB_ACCESS_TOKEN Github credentials for issue report
+	ENV_GITHUB_ACCESS_TOKEN = "GITHUB_ACCESS_TOKEN"
+	// ENV_GITHUB_OWNER Github owner of the repository for issue report
+	ENV_GITHUB_OWNER = "GITHUB_OWNER"
+	// ENV_GITHUB_REPOSITORY Github repository for issue report
+	ENV_GITHUB_REPOSITORY = "GITHUB_REPOSITORY"
 )
 
 func main() {
@@ -41,16 +57,53 @@ func app() (retValue int) {
 		log.Flush()
 	}()
 
-	server := api.NewServer(
-		feedback.NewEndpoint(),
+	err := envPresent(
+		ENV_AWS_ENDPOINT_URL,
+		ENV_AWS_BUCKET,
+		ENV_GITHUB_ACCESS_TOKEN,
+		ENV_GITHUB_OWNER,
+		ENV_GITHUB_REPOSITORY,
+	)
+	if err != nil {
+		_ = log.Critical(err)
+		return -1
+	}
+
+	storage, err := storage.New(&storage.NewStorageOpts{
+		EndpointURL: os.Getenv(ENV_AWS_ENDPOINT_URL),
+		Bucket:      os.Getenv(ENV_AWS_BUCKET),
+	})
+	if err != nil {
+		_ = log.Critical("Failed to initialize storage: ", err)
+		return -1
+	}
+
+	githubReporter := github.NewReporter(&github.NewReporterOpts{
+		Token:      os.Getenv(ENV_GITHUB_ACCESS_TOKEN),
+		Owner:      os.Getenv(ENV_GITHUB_OWNER),
+		Repository: os.Getenv(ENV_GITHUB_REPOSITORY),
+	})
+
+	srvr := server.New(
+		feedback.NewEndpoint(githubReporter, storage),
 	)
 
-	err := server.Serve()
+	err = srvr.Serve()
 	if err != nil {
-		_ = log.Critical("Critical error occurred: ", err)
+		_ = log.Critical("Error running API server: ", err)
 		return -1
 	}
 	return 0
+}
+
+func envPresent(vars ...string) error {
+	for _, envkey := range vars {
+		_, found := os.LookupEnv(envkey)
+		if !found {
+			return errors.New("required environment variable is not set: " + envkey)
+		}
+	}
+	return nil
 }
 
 func configureFromFlags() {

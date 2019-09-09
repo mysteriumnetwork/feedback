@@ -22,31 +22,41 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	"os"
 
+	log "github.com/cihub/seelog"
 	"github.com/gin-gonic/gin"
 	"github.com/mysteriumnetwork/feedback/apierr"
-	"github.com/pkg/errors"
+	"github.com/mysteriumnetwork/feedback/storage"
+	"github.com/mysteriumnetwork/feedback/target/github"
 )
 
 // Endpoint user feedback endpoint
 type Endpoint struct {
+	reporter *github.Reporter
+	storage  *storage.Storage
 }
 
 // NewEndpoint creates new Endpoint
-func NewEndpoint() *Endpoint {
-	return &Endpoint{}
+func NewEndpoint(reporter *github.Reporter, storage *storage.Storage) *Endpoint {
+	return &Endpoint{reporter: reporter, storage: storage}
 }
 
-// GithubIssueForm create github issue request
-type GithubIssueForm struct {
+// CreateGithubIssueRequest create github issue request
+type CreateGithubIssueRequest struct {
 	UserId      string
 	Description string
 	Email       string
 	File        *multipart.FileHeader
 }
 
-// ParseGithubIssueForm parses GithubIssueForm from HTTP request
-func ParseGithubIssueForm(c *gin.Context) (form GithubIssueForm, errors []error) {
+// CreateGithubIssueResponse represents a successful github issue creation
+type CreateGithubIssueResponse struct {
+	IssueId string `json:"issueId"`
+}
+
+// ParseGithubIssueRequest parses CreateGithubIssueRequest from HTTP request
+func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, errors []error) {
 	var ok bool
 	form.UserId, ok = c.GetPostForm("userId")
 	if !ok {
@@ -74,30 +84,55 @@ func ParseGithubIssueForm(c *gin.Context) (form GithubIssueForm, errors []error)
 
 // CreateGithubIssue creates a new Github issue with user report
 func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
-	form, formErrors := ParseGithubIssueForm(c)
-	if len(formErrors) > 0 {
-		c.JSON(http.StatusBadRequest, apierr.Multiple(formErrors))
+	form, requestErrs := ParseGithubIssueRequest(c)
+	if len(requestErrs) > 0 {
+		c.JSON(http.StatusBadRequest, apierr.Multiple(requestErrs))
 		return
 	}
 
 	tempFile, err := ioutil.TempFile("", form.File.Filename)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apierr.Single(errors.Wrap(err, "could not allocate a temporary file")))
+		err := fmt.Errorf("could not allocate a temporary file: %w", err)
+		c.JSON(http.StatusInternalServerError, apierr.Single(err))
 		return
 	}
+	defer func() {
+		err := os.Remove(tempFile.Name())
+		if err != nil {
+			_ = log.Warn("Failed to remove temp file", err)
+		}
+	}()
 
 	err = c.SaveUploadedFile(form.File, tempFile.Name())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, apierr.Single(errors.Wrap(err, "could not save the uploaded file")))
+		err := fmt.Errorf("could not save the uploaded file: %w", err)
+		c.JSON(http.StatusInternalServerError, apierr.Single(err))
+		return
 	}
 
-	email := c.PostForm("email")
-	fmt.Println("Email: " + email)
-	description := c.PostForm("description")
-	fmt.Println("Description: " + description)
-	fmt.Println("Uploaded: " + tempFile.Name())
+	logURL, err := e.storage.Upload(tempFile.Name())
+	if err != nil {
+		err := fmt.Errorf("could not upload file to the storage: %w", err)
+		c.JSON(http.StatusServiceUnavailable, apierr.Single(err))
+		return
+	}
 
-	c.JSON(http.StatusOK, "file uploaded")
+	issueId, err := e.reporter.ReportIssue(&github.Report{
+		UserId:      form.UserId,
+		Description: form.Description,
+		Email:       form.Email,
+		LogURL:      *logURL,
+	})
+	if err != nil {
+		err := fmt.Errorf("could not report issue to github: %w", err)
+		c.JSON(http.StatusServiceUnavailable, apierr.Single(err))
+		return
+	}
+
+	log.Infof("Created github issue %q from request %+v", issueId, form)
+	c.JSON(http.StatusOK, &CreateGithubIssueResponse{
+		IssueId: issueId,
+	})
 }
 
 // RegisterRoutes registers feedback API routes
