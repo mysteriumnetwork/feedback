@@ -14,16 +14,12 @@ variables:
 
 test:
   stage: test
-  image: golang:1.13.0-alpine3.10
+  image: golang:1.13
   tags: [docker]
-  before_script:
-    - apk add --no-cache bash gcc musl-dev
-  script: go test ./...
+  script: go run mage.go -v test
 
 build:
   stage: build
-  image: golang:1.13.0-alpine3.10
+  image: golang:1.13.0
   tags: [docker]
-  before_script:
-    - apk add --no-cache bash gcc musl-dev
   script: go run mage.go -v build
