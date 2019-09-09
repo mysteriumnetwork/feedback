@@ -1,5 +1,8 @@
 FROM golang:1.13.0-alpine3.10 AS builder
 
+# Install packages
+RUN apk add --no-cache bash gcc musl-dev git curl
+
 # Compile application
 WORKDIR /src
 ADD . .

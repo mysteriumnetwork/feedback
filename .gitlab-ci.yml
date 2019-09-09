@@ -18,7 +18,7 @@ test:
   tags: [docker]
   before_script:
     - apk add --no-cache bash gcc musl-dev
-  script: go run mage.go -v test
+  script: go test ./...
 
 build:
   stage: build
