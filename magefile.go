@@ -34,7 +34,7 @@ func Build() error {
 // Regen re-generates API schema (swagger.json) and related bindata files
 func Regen() error {
 	color.Cyan("Installing stuff")
-	err := shell.NewCmd("go install").Run()
+	err := shell.NewCmd("go install github.com/go-swagger/go-swagger/...").Run()
 	if err != nil {
 		return err
 	}
