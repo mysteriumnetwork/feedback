@@ -20,6 +20,6 @@ test:
 
 build:
   stage: build
-  image: golang:1.13.0
+  image: golang:1.13
   tags: [docker]
   script: go run mage.go -v build
