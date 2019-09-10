@@ -1,0 +1,130 @@
+{
+  "swagger": "2.0",
+  "paths": {
+    "/github": {
+      "post": {
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "summary": "Creates a new Github issue with user report",
+        "operationId": "createGithubIssue",
+        "parameters": [
+          {
+            "type": "string",
+            "x-go-name": "UserId",
+            "name": "userId",
+            "in": "formData",
+            "required": true
+          },
+          {
+            "type": "string",
+            "x-go-name": "Description",
+            "name": "description",
+            "in": "formData",
+            "required": true
+          },
+          {
+            "type": "string",
+            "x-go-name": "Email",
+            "name": "email",
+            "in": "formData"
+          },
+          {
+            "type": "file",
+            "x-go-name": "File",
+            "name": "file",
+            "in": "formData",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Issue created in Github",
+            "schema": {
+              "$ref": "#/definitions/CreateGithubIssueResponse"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/ping": {
+      "get": {
+        "summary": "Ping responds to ping",
+        "operationId": "ping",
+        "responses": {
+          "200": {
+            "description": "Ping successful",
+            "schema": {
+              "$ref": "#/definitions/Ping"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "CreateGithubIssueResponse": {
+      "description": "CreateGithubIssueResponse represents a successful github issue creation",
+      "type": "object",
+      "properties": {
+        "issueId": {
+          "type": "string",
+          "x-go-name": "IssueId"
+        }
+      },
+      "x-go-package": "github.com/mysteriumnetwork/feedback/feedback"
+    },
+    "Error": {
+      "description": "Error represents a single error in an ErrorResponse",
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "x-go-name": "Message"
+        }
+      },
+      "x-go-package": "github.com/mysteriumnetwork/feedback/apierr"
+    },
+    "ErrorResponse": {
+      "description": "ErrorResponse represent HTTP error payload",
+      "type": "object",
+      "properties": {
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Error"
+          },
+          "x-go-name": "Errors"
+        }
+      },
+      "x-go-package": "github.com/mysteriumnetwork/feedback/apierr"
+    },
+    "Ping": {
+      "description": "Ping represents ping response",
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "x-go-name": "Message",
+          "example": "pong"
+        }
+      },
+      "x-go-package": "github.com/mysteriumnetwork/feedback/server"
+    }
+  }
+}
