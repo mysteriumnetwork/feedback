@@ -20,13 +20,31 @@
 package main
 
 import (
+	"github.com/fatih/color"
 	"github.com/magefile/mage/sh"
 	"github.com/mysteriumnetwork/go-ci/commands"
+	"github.com/mysteriumnetwork/go-ci/shell"
 )
 
 // Build builds the service
 func Build() error {
-	return sh.RunV("go", "build", "-o", "./build/feedback", "./cmd/main.go")
+	return shell.NewCmd("go build -o ./build/feedback ./cmd/main.go").Run()
+}
+
+// Regen re-generates API schema (swagger.json) and related bindata files
+func Regen() error {
+	color.Cyan("Installing stuff")
+	err := shell.NewCmd("go install").Run()
+	if err != nil {
+		return err
+	}
+	color.Cyan("Generating swagger.json")
+	err = shell.NewCmd("swagger generate spec --scan-models --output=./docs/swagger.json").Run()
+	if err != nil {
+		return err
+	}
+	color.Cyan("Generating assets for serving swagger.json")
+	return shell.NewCmd("go generate ./...").Run()
 }
 
 // Test runs tests

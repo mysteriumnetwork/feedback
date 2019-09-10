@@ -18,6 +18,7 @@
 package apierr
 
 // ErrorResponse represent HTTP error payload
+// swagger:model
 type ErrorResponse struct {
 	Errors []Error `json:"errors"`
 }

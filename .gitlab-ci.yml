@@ -1,4 +1,5 @@
 stages:
+  - prepare
   - test
   - build
 
@@ -12,11 +13,21 @@ variables:
   GITHUB_REPO: feedback
   GOFLAGS: "-count=1" # Supersedes GOCACHE=off, see: https://github.com/golang/go/issues/29378#issuecomment-449383809
 
+docs:
+  stage: prepare
+  image: golang:1.13
+  tags: [docker]
+  artifacts:
+    paths: [docs/]
+  script: go run mage.go -v regen
+
 test:
   stage: test
   image: golang:1.13
   tags: [docker]
-  script: go run mage.go -v test
+  script:
+    - go run mage.go -v test
+    - go run mage.go -v check
 
 build:
   stage: build

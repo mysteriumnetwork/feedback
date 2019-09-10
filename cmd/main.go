@@ -23,6 +23,7 @@ import (
 	"os"
 
 	log "github.com/cihub/seelog"
+	"github.com/mysteriumnetwork/feedback/docs"
 	"github.com/mysteriumnetwork/feedback/feedback"
 	"github.com/mysteriumnetwork/feedback/logconfig"
 	"github.com/mysteriumnetwork/feedback/server"
@@ -87,6 +88,7 @@ func app() (retValue int) {
 	srvr := server.New(
 		feedback.NewEndpoint(githubReporter, storage),
 		server.NewPingEndpoint(),
+		docs.NewEndpoint(),
 	)
 
 	err = srvr.Serve()

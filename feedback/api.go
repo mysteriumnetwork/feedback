@@ -43,14 +43,24 @@ func NewEndpoint(reporter *github.Reporter, storage *storage.Storage) *Endpoint 
 }
 
 // CreateGithubIssueRequest create github issue request
+// swagger:parameters createGithubIssue
 type CreateGithubIssueRequest struct {
-	UserId      string
-	Description string
-	Email       string
-	File        *multipart.FileHeader
+	// in: formData
+	// required: true
+	UserId string `json:"userId"`
+	// in: formData
+	// required: true
+	Description string `json:"description"`
+	// in: formData
+	Email string `json:"email"`
+	// in: formData
+	// required: true
+	// swagger:file
+	File *multipart.FileHeader `json:"file"`
 }
 
 // CreateGithubIssueResponse represents a successful github issue creation
+// swagger:model
 type CreateGithubIssueResponse struct {
 	IssueId string `json:"issueId"`
 }
@@ -82,7 +92,28 @@ func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, err
 	return form, errors
 }
 
-// CreateGithubIssue creates a new Github issue with user report
+// swagger:operation POST /github createGithubIssue
+// ---
+// summary: Creates a new Github issue with user report
+//
+// produces:
+// - application/json
+// consumes:
+// - multipart/form-data
+// responses:
+//   '200':
+//     description: Issue created in Github
+//     schema:
+//       "$ref": "#/definitions/CreateGithubIssueResponse"
+//   '400':
+//     description: Bad request
+//     schema:
+//       "$ref": "#/definitions/ErrorResponse"
+//   '500':
+//     description: Internal server error
+//     schema:
+//       "$ref": "#/definitions/ErrorResponse"
+//
 func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
 	form, requestErrs := ParseGithubIssueRequest(c)
 	if len(requestErrs) > 0 {
