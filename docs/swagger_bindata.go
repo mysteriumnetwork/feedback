@@ -92,7 +92,7 @@ func swaggerJson() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "swagger.json", size: 3310, mode: os.FileMode(420), modTime: time.Unix(1568124961, 0)}
+	info := bindataFileInfo{name: "swagger.json", size: 3310, mode: os.FileMode(420), modTime: time.Unix(1568201685, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
