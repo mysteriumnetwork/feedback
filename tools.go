@@ -1,4 +1,4 @@
-// +build ci
+// +build tools
 
 /*
  * Copyright (C) 2019 The "MysteriumNetwork/feedback" Authors.
@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package ci
+package main
 
 // Empty file for keeping CI tools in go.mod
 
