@@ -78,10 +78,7 @@ func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, err
 		errors = append(errors, apierr.Required("description"))
 	}
 
-	form.Email, ok = c.GetPostForm("email")
-	if !ok {
-		errors = append(errors, apierr.Required("email"))
-	}
+	form.Email = c.PostForm("email")
 
 	var err error
 	form.File, err = c.FormFile("file")
