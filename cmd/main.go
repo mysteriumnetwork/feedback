@@ -15,6 +15,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// Package main Feedback API
+//
+// The purpose of this documentation is to provide developers an insight of how to
+// interact with Mysterium Feedback API
+//
+//     schemes: https
+//     host: localhost
+//     basepath: /api/v1
+//     license: GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+//
+//     consumes:
+//       - application/json
+//
+//     produces:
+//       - application/json
+//
+//     version: 0.0.1
+//
+// swagger:meta
 package main
 
 import (

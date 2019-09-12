@@ -34,7 +34,7 @@ func Build() error {
 // Regen re-generates API schema (swagger.json) and related bindata files
 func Regen() error {
 	color.Cyan("Installing stuff")
-	err := shell.NewCmd("go install github.com/go-swagger/go-swagger/...").Run()
+	err := shell.NewCmd("go get -u github.com/go-swagger/go-swagger/...").Run()
 	if err != nil {
 		return err
 	}
@@ -45,6 +45,17 @@ func Regen() error {
 	}
 	color.Cyan("Generating assets for serving swagger.json")
 	return shell.NewCmd("go generate ./...").Run()
+}
+
+// Validate validates API schema (swagger.json)
+func Validate() error {
+	color.Cyan("Installing stuff")
+	err := shell.NewCmd("go get -u github.com/go-swagger/go-swagger/...").Run()
+	if err != nil {
+		return err
+	}
+	color.Cyan("Validating swagger.json")
+	return shell.NewCmd("swagger validate ./docs/swagger.json").Run()
 }
 
 // Test runs tests

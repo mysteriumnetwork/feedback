@@ -19,7 +19,9 @@ docs:
   tags: [docker]
   artifacts:
     paths: [docs/]
-  script: go run mage.go -v regen
+  script:
+    - go run mage.go -v regen
+    - go run mage.go -v validate
 
 test:
   stage: test

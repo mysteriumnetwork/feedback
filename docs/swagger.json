@@ -1,5 +1,25 @@
 {
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "schemes": [
+    "https"
+  ],
   "swagger": "2.0",
+  "info": {
+    "description": "The purpose of this documentation is to provide developers an insight of how to\ninteract with Mysterium Feedback API",
+    "title": "Feedback API",
+    "license": {
+      "name": "GPLv3",
+      "url": "https://www.gnu.org/licenses/gpl-3.0.html"
+    },
+    "version": "0.0.1"
+  },
+  "host": "localhost",
+  "basePath": "/api/v1",
   "paths": {
     "/github": {
       "post": {
