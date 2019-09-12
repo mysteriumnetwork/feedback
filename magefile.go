@@ -52,24 +52,29 @@ func Test() error {
 	return commands.Test("./...")
 }
 
-// CheckGoImports checks for issues with go imports
+// CheckCopyright checks for issues with go imports
+func CheckCopyright() error {
+	return commands.CopyrightD(".", "docs")
+}
+
+// CheckGo checks for issues with go imports
 func CheckGoImports() error {
-	return commands.GoImports("./...", "docs")
+	return commands.GoImportsD(".", "docs")
 }
 
 // CheckGoLint reports linting errors
 func CheckGoLint() error {
-	return commands.GoLint("./...", "docs")
+	return commands.GoLintD(".", "docs")
 }
 
 // CheckGoVet checks that the source is compliant with go vet
 func CheckGoVet() error {
-	return commands.GoVet("./...")
+	return commands.GoVet(".")
 }
 
 // Check runs all checks
 func Check() error {
-	return commands.Check("./...", "docs")
+	return commands.CheckD(".", "docs")
 }
 
 // Run runs the service

@@ -64,7 +64,7 @@
     },
     "/ping": {
       "get": {
-        "summary": "Ping responds to ping",
+        "summary": "Responds to ping",
         "operationId": "ping",
         "responses": {
           "200": {

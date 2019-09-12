@@ -92,6 +92,8 @@ func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, err
 	return form, errors
 }
 
+// CreateGithubIssue creates a new Github issue with user report
+//
 // swagger:operation POST /github createGithubIssue
 // ---
 // summary: Creates a new Github issue with user report

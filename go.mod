@@ -16,7 +16,7 @@ require (
 	github.com/magefile/mage v1.8.0
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-isatty v0.0.9 // indirect
-	github.com/mysteriumnetwork/go-ci v0.0.0-20190726090015-267593de918b
+	github.com/mysteriumnetwork/go-ci v0.0.0-20190912064927-c54e2b0b3b5c
 	golang.org/x/crypto v0.0.0-20190907121410-71b5226ff739 // indirect
 	golang.org/x/net v0.0.0-20190909003024-a7b16738d86b // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
