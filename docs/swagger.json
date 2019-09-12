@@ -3,6 +3,7 @@
   "paths": {
     "/github": {
       "post": {
+        "description": "1 request per minute is allowed",
         "consumes": [
           "multipart/form-data"
         ],
@@ -52,6 +53,9 @@
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
+          },
+          "429": {
+            "description": "Too many requests"
           },
           "500": {
             "description": "Internal server error",

@@ -27,19 +27,21 @@ import (
 	log "github.com/cihub/seelog"
 	"github.com/gin-gonic/gin"
 	"github.com/mysteriumnetwork/feedback/apierr"
+	"github.com/mysteriumnetwork/feedback/server"
 	"github.com/mysteriumnetwork/feedback/storage"
 	"github.com/mysteriumnetwork/feedback/target/github"
 )
 
 // Endpoint user feedback endpoint
 type Endpoint struct {
-	reporter *github.Reporter
-	storage  *storage.Storage
+	reporter    *github.Reporter
+	storage     *storage.Storage
+	rateLimiter *server.RateLimiter
 }
 
 // NewEndpoint creates new Endpoint
-func NewEndpoint(reporter *github.Reporter, storage *storage.Storage) *Endpoint {
-	return &Endpoint{reporter: reporter, storage: storage}
+func NewEndpoint(reporter *github.Reporter, storage *storage.Storage, rateLimiter *server.RateLimiter) *Endpoint {
+	return &Endpoint{reporter: reporter, storage: storage, rateLimiter: rateLimiter}
 }
 
 // CreateGithubIssueRequest create github issue request
@@ -94,6 +96,7 @@ func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, err
 // swagger:operation POST /github createGithubIssue
 // ---
 // summary: Creates a new Github issue with user report
+// description: 1 request per minute is allowed
 //
 // produces:
 // - application/json
@@ -108,6 +111,8 @@ func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, err
 //     description: Bad request
 //     schema:
 //       "$ref": "#/definitions/ErrorResponse"
+//   '429':
+//     description: Too many requests
 //   '500':
 //     description: Internal server error
 //     schema:
@@ -167,5 +172,5 @@ func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
 
 // RegisterRoutes registers feedback API routes
 func (e *Endpoint) RegisterRoutes(r gin.IRoutes) {
-	r.POST("/github", e.CreateGithubIssue)
+	r.POST("/github", e.rateLimiter.Handler(), e.CreateGithubIssue)
 }

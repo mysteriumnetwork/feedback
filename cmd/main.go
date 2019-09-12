@@ -84,9 +84,10 @@ func app() (retValue int) {
 		Owner:      os.Getenv(ENV_GITHUB_OWNER),
 		Repository: os.Getenv(ENV_GITHUB_REPOSITORY),
 	})
+	rateLimiter := server.NewRateLimiter(0.0166) // 1/minute
 
 	srvr := server.New(
-		feedback.NewEndpoint(githubReporter, storage),
+		feedback.NewEndpoint(githubReporter, storage, rateLimiter),
 		server.NewPingEndpoint(),
 		docs.NewEndpoint(),
 	)
