@@ -44,23 +44,21 @@ import (
 	log "github.com/cihub/seelog"
 	"github.com/mysteriumnetwork/feedback/docs"
 	"github.com/mysteriumnetwork/feedback/feedback"
-	"github.com/mysteriumnetwork/feedback/logconfig"
+	"github.com/mysteriumnetwork/feedback/infra"
 	"github.com/mysteriumnetwork/feedback/server"
-	"github.com/mysteriumnetwork/feedback/storage"
-	"github.com/mysteriumnetwork/feedback/target/github"
 )
 
 const (
-	// ENV_AWS_ENDPOINT_URL AWS URL for file upload
-	ENV_AWS_ENDPOINT_URL = "AWS_ENDPOINT_URL"
-	// ENV_AWS_BUCKET AWS bucket for file upload
-	ENV_AWS_BUCKET = "AWS_BUCKET"
-	// ENV_GITHUB_ACCESS_TOKEN Github credentials for issue report
-	ENV_GITHUB_ACCESS_TOKEN = "GITHUB_ACCESS_TOKEN"
-	// ENV_GITHUB_OWNER Github owner of the repository for issue report
-	ENV_GITHUB_OWNER = "GITHUB_OWNER"
-	// ENV_GITHUB_REPOSITORY Github repository for issue report
-	ENV_GITHUB_REPOSITORY = "GITHUB_REPOSITORY"
+	// EnvAWSEndpointURL AWS URL for file upload
+	EnvAWSEndpointURL = "AWS_ENDPOINT_URL"
+	// EnvAWSBucket AWS bucket for file upload
+	EnvAWSBucket = "AWS_BUCKET"
+	// EnvGithubAccessToken Github credentials for issue report
+	EnvGithubAccessToken = "GITHUB_ACCESS_TOKEN"
+	// EnvGithubOwner Github owner of the repository for issue report
+	EnvGithubOwner = "GITHUB_OWNER"
+	// EnvGithubRepository Github repository for issue report
+	EnvGithubRepository = "GITHUB_REPOSITORY"
 )
 
 func main() {
@@ -69,7 +67,7 @@ func main() {
 
 func app() (retValue int) {
 	configureFromFlags()
-	logconfig.BootstrapWith(logconfig.CurrentLogOptions)
+	infra.BootstrapLogger(infra.CurrentLogOptions)
 
 	log.Info("Starting feedback service")
 	defer func() {
@@ -78,36 +76,36 @@ func app() (retValue int) {
 	}()
 
 	err := envPresent(
-		ENV_AWS_ENDPOINT_URL,
-		ENV_AWS_BUCKET,
-		ENV_GITHUB_ACCESS_TOKEN,
-		ENV_GITHUB_OWNER,
-		ENV_GITHUB_REPOSITORY,
+		EnvAWSEndpointURL,
+		EnvAWSBucket,
+		EnvGithubAccessToken,
+		EnvGithubOwner,
+		EnvGithubRepository,
 	)
 	if err != nil {
 		_ = log.Critical(err)
 		return -1
 	}
 
-	storage, err := storage.New(&storage.NewStorageOpts{
-		EndpointURL: os.Getenv(ENV_AWS_ENDPOINT_URL),
-		Bucket:      os.Getenv(ENV_AWS_BUCKET),
+	storage, err := feedback.New(&feedback.NewStorageOpts{
+		EndpointURL: os.Getenv(EnvAWSEndpointURL),
+		Bucket:      os.Getenv(EnvAWSBucket),
 	})
 	if err != nil {
 		_ = log.Critical("Failed to initialize storage: ", err)
 		return -1
 	}
 
-	githubReporter := github.NewReporter(&github.NewReporterOpts{
-		Token:      os.Getenv(ENV_GITHUB_ACCESS_TOKEN),
-		Owner:      os.Getenv(ENV_GITHUB_OWNER),
-		Repository: os.Getenv(ENV_GITHUB_REPOSITORY),
+	githubReporter := feedback.NewReporter(&feedback.NewReporterOpts{
+		Token:      os.Getenv(EnvGithubAccessToken),
+		Owner:      os.Getenv(EnvGithubOwner),
+		Repository: os.Getenv(EnvGithubRepository),
 	})
-	rateLimiter := server.NewRateLimiter(0.0166) // 1/minute
+	rateLimiter := infra.NewRateLimiter(0.0166) // 1/minute
 
 	srvr := server.New(
 		feedback.NewEndpoint(githubReporter, storage, rateLimiter),
-		server.NewPingEndpoint(),
+		infra.NewPingEndpoint(),
 		docs.NewEndpoint(),
 	)
 
@@ -130,7 +128,7 @@ func envPresent(vars ...string) error {
 }
 
 func configureFromFlags() {
-	logconfig.RegisterFlags()
+	infra.RegisterLoggerFlags()
 	flag.Parse()
-	logconfig.Configure()
+	infra.ConfigureLogger()
 }

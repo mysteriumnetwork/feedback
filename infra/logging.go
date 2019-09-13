@@ -15,12 +15,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package logconfig
+package infra
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"strings"
+	"text/template"
 
 	"github.com/cihub/seelog"
 )
@@ -42,13 +44,13 @@ var (
 	logLevelFlag string
 )
 
-// RegisterFlags registers logger CLI flags
-func RegisterFlags() {
+// RegisterLoggerFlags registers logger CLI flags
+func RegisterLoggerFlags() {
 	flag.StringVar(&logLevelFlag, "log-level", seelog.DebugStr, fmt.Sprintf("Service logging level (%s)", strings.Join(allLevels, "|")))
 }
 
-// Configure configures options using parsed flag values
-func Configure() {
+// ConfigureLogger configures options using parsed flag values
+func ConfigureLogger() {
 	level := logLevelFlag
 	levelInt, found := seelog.LogLevelFromString(level)
 	if !found {
@@ -57,4 +59,44 @@ func Configure() {
 	}
 	(*CurrentLogOptions).logLevelInt = levelInt
 	(*CurrentLogOptions).LogLevel = level
+}
+
+const seewayLogXMLConfigTemplate = `
+<seelog minlevel="{{.LogLevel}}">
+	<outputs formatid="main">
+		<console/>
+	</outputs>
+	<formats>
+		<format id="main" format="%UTCDate(2006-01-02T15:04:05.999999999) [%Level] [%Func] %Msg%n"/>
+	</formats>
+</seelog>
+`
+
+func buildSeelogConfig(opts LogOptions) string {
+	tmpl := template.Must(template.New("seelogcfg").Parse(seewayLogXMLConfigTemplate))
+
+	var tpl bytes.Buffer
+	err := tmpl.Execute(&tpl, opts)
+	if err != nil {
+		panic(err)
+	}
+
+	return tpl.String()
+}
+
+// BootstrapLogger loads seelog package into the overall system
+func BootstrapLogger(opts *LogOptions) {
+	if opts != nil {
+		CurrentLogOptions = opts
+	}
+	newLogger, err := seelog.LoggerFromConfigAsString(buildSeelogConfig(*CurrentLogOptions))
+	if err != nil {
+		_ = seelog.Warn("Error parsing seelog configuration", err)
+		return
+	}
+	err = seelog.UseLogger(newLogger)
+	if err != nil {
+		_ = seelog.Warn("Error setting new logger for seelog", err)
+	}
+	seelog.Infof("Log level: %s", CurrentLogOptions.LogLevel)
 }

@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package apierr
+package infra
 
 // ErrorResponse represent HTTP error payload
 // swagger:model

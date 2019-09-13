@@ -26,21 +26,18 @@ import (
 
 	log "github.com/cihub/seelog"
 	"github.com/gin-gonic/gin"
-	"github.com/mysteriumnetwork/feedback/apierr"
-	"github.com/mysteriumnetwork/feedback/server"
-	"github.com/mysteriumnetwork/feedback/storage"
-	"github.com/mysteriumnetwork/feedback/target/github"
+	"github.com/mysteriumnetwork/feedback/infra"
 )
 
 // Endpoint user feedback endpoint
 type Endpoint struct {
-	reporter    *github.Reporter
-	storage     *storage.Storage
-	rateLimiter *server.RateLimiter
+	reporter    *Reporter
+	storage     *Storage
+	rateLimiter *infra.RateLimiter
 }
 
 // NewEndpoint creates new Endpoint
-func NewEndpoint(reporter *github.Reporter, storage *storage.Storage, rateLimiter *server.RateLimiter) *Endpoint {
+func NewEndpoint(reporter *Reporter, storage *Storage, rateLimiter *infra.RateLimiter) *Endpoint {
 	return &Endpoint{reporter: reporter, storage: storage, rateLimiter: rateLimiter}
 }
 
@@ -72,12 +69,12 @@ func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, err
 	var ok bool
 	form.UserId, ok = c.GetPostForm("userId")
 	if !ok {
-		errors = append(errors, apierr.Required("userId"))
+		errors = append(errors, infra.Required("userId"))
 	}
 
 	form.Description, ok = c.GetPostForm("description")
 	if !ok {
-		errors = append(errors, apierr.Required("description"))
+		errors = append(errors, infra.Required("description"))
 	}
 
 	form.Email = c.PostForm("email")
@@ -85,7 +82,7 @@ func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, err
 	var err error
 	form.File, err = c.FormFile("file")
 	if err != nil {
-		errors = append(errors, apierr.Required("file"))
+		errors = append(errors, infra.Required("file"))
 	}
 
 	return form, errors
@@ -121,14 +118,14 @@ func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, err
 func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
 	form, requestErrs := ParseGithubIssueRequest(c)
 	if len(requestErrs) > 0 {
-		c.JSON(http.StatusBadRequest, apierr.Multiple(requestErrs))
+		c.JSON(http.StatusBadRequest, infra.Multiple(requestErrs))
 		return
 	}
 
 	tempFile, err := ioutil.TempFile("", form.File.Filename)
 	if err != nil {
 		err := fmt.Errorf("could not allocate a temporary file: %w", err)
-		c.JSON(http.StatusInternalServerError, apierr.Single(err))
+		c.JSON(http.StatusInternalServerError, infra.Single(err))
 		return
 	}
 	defer func() {
@@ -141,18 +138,18 @@ func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
 	err = c.SaveUploadedFile(form.File, tempFile.Name())
 	if err != nil {
 		err := fmt.Errorf("could not save the uploaded file: %w", err)
-		c.JSON(http.StatusInternalServerError, apierr.Single(err))
+		c.JSON(http.StatusInternalServerError, infra.Single(err))
 		return
 	}
 
 	logURL, err := e.storage.Upload(tempFile.Name())
 	if err != nil {
 		err := fmt.Errorf("could not upload file to the storage: %w", err)
-		c.JSON(http.StatusServiceUnavailable, apierr.Single(err))
+		c.JSON(http.StatusServiceUnavailable, infra.Single(err))
 		return
 	}
 
-	issueId, err := e.reporter.ReportIssue(&github.Report{
+	issueId, err := e.reporter.ReportIssue(&Report{
 		UserId:      form.UserId,
 		Description: form.Description,
 		Email:       form.Email,
@@ -160,7 +157,7 @@ func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
 	})
 	if err != nil {
 		err := fmt.Errorf("could not report issue to github: %w", err)
-		c.JSON(http.StatusServiceUnavailable, apierr.Single(err))
+		c.JSON(http.StatusServiceUnavailable, infra.Single(err))
 		return
 	}
 
