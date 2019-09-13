@@ -27,7 +27,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/mysteriumnetwork/feedback/infra"
 	"github.com/pkg/errors"
 )
 
@@ -110,7 +109,7 @@ type CreateGithubIssueRequest struct {
 // CreateGithubIssueResponse represents create github issue response (either successful or error)
 type CreateGithubIssueResponse struct {
 	Result       *CreateGithubIssueResponse
-	Errors       *infra.ErrorResponse
+	Errors       *ErrorResponse
 	HTTPResponse *http.Response
 	Success      bool
 }
