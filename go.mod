@@ -19,6 +19,7 @@ require (
 	github.com/mattn/go-isatty v0.0.9 // indirect
 	github.com/mysteriumnetwork/go-ci v0.0.0-20190912064927-c54e2b0b3b5c
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
+	github.com/pkg/errors v0.8.1
 	golang.org/x/crypto v0.0.0-20190911031432-227b76d455e7 // indirect
 	golang.org/x/net v0.0.0-20190912160710-24e19bdeb0f2 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
