@@ -21,6 +21,7 @@ import (
 	"github.com/didip/tollbooth/v5"
 	"github.com/didip/tollbooth/v5/limiter"
 	"github.com/gin-gonic/gin"
+	"github.com/mysteriumnetwork/feedback/infra/apierror"
 )
 
 // RateLimiter limits requests to certain endpoints
@@ -41,7 +42,7 @@ func (r *RateLimiter) Handler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		httpErr := tollbooth.LimitByRequest(r.limiter, c.Writer, c.Request)
 		if httpErr != nil {
-			c.Data(httpErr.StatusCode, r.limiter.GetMessageContentType(), []byte(httpErr.Message))
+			c.JSON(httpErr.StatusCode, apierror.NewMsg(httpErr.Message).ToResponse())
 			c.Abort()
 		} else {
 			c.Next()
