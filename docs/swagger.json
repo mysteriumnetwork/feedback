@@ -71,7 +71,7 @@
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/ErrorResponse"
+              "$ref": "#/definitions/APIErrorResponse"
             }
           },
           "429": {
@@ -80,7 +80,7 @@
           "500": {
             "description": "Internal server error",
             "schema": {
-              "$ref": "#/definitions/ErrorResponse"
+              "$ref": "#/definitions/APIErrorResponse"
             }
           }
         }
@@ -102,6 +102,34 @@
     }
   },
   "definitions": {
+    "APIError": {
+      "description": "APIError represents a single error in an APIErrorResponse",
+      "type": "object",
+      "properties": {
+        "Cause": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string",
+          "x-go-name": "Message"
+        }
+      },
+      "x-go-package": "github.com/mysteriumnetwork/feedback/infra/apierror"
+    },
+    "APIErrorResponse": {
+      "description": "APIErrorResponse represent HTTP error payload",
+      "type": "object",
+      "properties": {
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/APIError"
+          },
+          "x-go-name": "Errors"
+        }
+      },
+      "x-go-package": "github.com/mysteriumnetwork/feedback/infra/apierror"
+    },
     "CreateGithubIssueResponse": {
       "description": "CreateGithubIssueResponse represents a successful github issue creation",
       "type": "object",
@@ -122,7 +150,7 @@
           "x-go-name": "Message"
         }
       },
-      "x-go-package": "github.com/mysteriumnetwork/feedback/apierr"
+      "x-go-package": "github.com/mysteriumnetwork/feedback/client"
     },
     "ErrorResponse": {
       "description": "ErrorResponse represent HTTP error payload",
@@ -136,7 +164,7 @@
           "x-go-name": "Errors"
         }
       },
-      "x-go-package": "github.com/mysteriumnetwork/feedback/apierr"
+      "x-go-package": "github.com/mysteriumnetwork/feedback/client"
     },
     "Ping": {
       "description": "Ping represents ping response",
@@ -148,7 +176,7 @@
           "example": "pong"
         }
       },
-      "x-go-package": "github.com/mysteriumnetwork/feedback/server"
+      "x-go-package": "github.com/mysteriumnetwork/feedback/infra"
     }
   }
 }
