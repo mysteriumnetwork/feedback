@@ -47,7 +47,7 @@ func New(routes ...routes) *Server {
 func (s *Server) Serve() error {
 	r := gin.New()
 	r.Use(gin.Recovery())
-	r.Use(Logger())
+	r.Use(Logger("/api/v1/ping"))
 	r.Use(cors.Default())
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, apierror.NewMsg("resource not found").ToResponse())
@@ -65,13 +65,19 @@ func (s *Server) Serve() error {
 
 // Logger forces gin to use our logger
 // Adapted from gin.Logger
-func Logger() gin.HandlerFunc {
+func Logger(ignorePaths ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		path := c.Request.URL.Path
 		raw := c.Request.URL.RawQuery
 
 		c.Next()
+
+		for _, igp := range ignorePaths {
+			if path == igp {
+				return
+			}
+		}
 
 		end := time.Now()
 		latency := end.Sub(start)
