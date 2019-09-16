@@ -18,14 +18,13 @@
 package server
 
 import (
-	"errors"
 	"net/http"
 	"time"
 
 	log "github.com/cihub/seelog"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/mysteriumnetwork/feedback/infra"
+	"github.com/mysteriumnetwork/feedback/infra/apierror"
 )
 
 type routes interface {
@@ -51,7 +50,7 @@ func (s *Server) Serve() error {
 	r.Use(Logger())
 	r.Use(cors.Default())
 	r.NoRoute(func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, infra.Single(errors.New("resource not found")))
+		c.JSON(http.StatusNotFound, apierror.NewMsg("resource not found").ToResponse())
 	})
 
 	v1 := r.Group("/api/v1")

@@ -15,37 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package infra
-
-// ErrorResponse represent HTTP error payload
-// swagger:model
-type ErrorResponse struct {
-	Errors []Error `json:"errors"`
-}
-
-// Error represents a single error in an ErrorResponse
-type Error struct {
-	Message string `json:"message"`
-}
-
-// Error represents error as string
-func (e Error) Error() string {
-	return e.Message
-}
-
-// Single creates an error response containing a single error
-func Single(err error) *ErrorResponse {
-	return Multiple([]error{err})
-}
-
-// Multiple creates an error response containing multiple errors
-func Multiple(errors []error) *ErrorResponse {
-	var apierrs []Error
-	for _, err := range errors {
-		apierrs = append(apierrs, Error{Message: err.Error()})
-	}
-	return &ErrorResponse{Errors: apierrs}
-}
+package apierror
 
 // Required creates a new RequiredFieldError
 func Required(field string) RequiredFieldError {

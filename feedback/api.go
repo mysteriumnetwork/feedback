@@ -18,7 +18,6 @@
 package feedback
 
 import (
-	"fmt"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -28,6 +27,7 @@ import (
 	log "github.com/cihub/seelog"
 	"github.com/gin-gonic/gin"
 	"github.com/mysteriumnetwork/feedback/infra"
+	"github.com/mysteriumnetwork/feedback/infra/apierror"
 )
 
 // Endpoint user feedback endpoint
@@ -69,26 +69,26 @@ type CreateGithubIssueResponse struct {
 func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, errors []error) {
 	_, err := c.MultipartForm()
 	if err != nil {
-		errors = append(errors, infra.Error{Message: "could not parse form: " + err.Error()})
+		errors = append(errors, apierror.APIError{Message: "could not parse form: " + err.Error()})
 		return form, errors
 	}
 
 	var ok bool
 	form.UserId, ok = c.GetPostForm("userId")
 	if !ok {
-		errors = append(errors, infra.Required("userId"))
+		errors = append(errors, apierror.Required("userId"))
 	}
 
 	form.Description, ok = c.GetPostForm("description")
 	if !ok {
-		errors = append(errors, infra.Required("description"))
+		errors = append(errors, apierror.Required("description"))
 	}
 
 	form.Email = c.PostForm("email")
 
 	form.File, err = c.FormFile("file")
 	if err != nil {
-		errors = append(errors, infra.Required("file"))
+		errors = append(errors, apierror.Required("file"))
 	}
 
 	return form, errors
@@ -113,25 +113,26 @@ func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, err
 //   '400':
 //     description: Bad request
 //     schema:
-//       "$ref": "#/definitions/ErrorResponse"
+//       "$ref": "#/definitions/APIErrorResponse"
 //   '429':
 //     description: Too many requests
 //   '500':
 //     description: Internal server error
 //     schema:
-//       "$ref": "#/definitions/ErrorResponse"
+//       "$ref": "#/definitions/APIErrorResponse"
 //
 func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
 	form, requestErrs := ParseGithubIssueRequest(c)
 	if len(requestErrs) > 0 {
-		c.JSON(http.StatusBadRequest, infra.Multiple(requestErrs))
+		c.JSON(http.StatusBadRequest, apierror.Multiple(requestErrs))
 		return
 	}
 
 	tempFile, err := ioutil.TempFile("", path.Base(form.File.Filename))
 	if err != nil {
-		err := fmt.Errorf("could not allocate a temporary file: %w", err)
-		c.JSON(http.StatusInternalServerError, infra.Single(err))
+		apiError := apierror.New("Could not allocate a temporary file", err)
+		_ = log.Error(apiError.Wrapped())
+		c.JSON(http.StatusInternalServerError, apiError.ToResponse())
 		return
 	}
 	defer func() {
@@ -143,15 +144,17 @@ func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
 
 	err = c.SaveUploadedFile(form.File, tempFile.Name())
 	if err != nil {
-		err := fmt.Errorf("could not save the uploaded file: %w", err)
-		c.JSON(http.StatusInternalServerError, infra.Single(err))
+		apiError := apierror.New("Could not save the uploaded file", err)
+		_ = log.Error(apiError.Wrapped())
+		c.JSON(http.StatusInternalServerError, apiError.ToResponse())
 		return
 	}
 
 	logURL, err := e.storage.Upload(tempFile.Name())
 	if err != nil {
-		err := fmt.Errorf("could not upload file to the storage: %w", err)
-		c.JSON(http.StatusServiceUnavailable, infra.Single(err))
+		apiError := apierror.New("could not upload file to the storage", err)
+		_ = log.Error(apiError.Wrapped())
+		c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
 		return
 	}
 
@@ -162,8 +165,9 @@ func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
 		LogURL:      *logURL,
 	})
 	if err != nil {
-		err := fmt.Errorf("could not report issue to github: %w", err)
-		c.JSON(http.StatusServiceUnavailable, infra.Single(err))
+		apiError := apierror.New("could not report issue to github", err)
+		_ = log.Error(apiError.Wrapped())
+		c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
 		return
 	}
 
