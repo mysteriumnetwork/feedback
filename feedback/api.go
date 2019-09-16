@@ -66,6 +66,12 @@ type CreateGithubIssueResponse struct {
 
 // ParseGithubIssueRequest parses CreateGithubIssueRequest from HTTP request
 func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, errors []error) {
+	_, err := c.MultipartForm()
+	if err != nil {
+		errors = append(errors, infra.Error{Message: "could not parse form: " + err.Error()})
+		return form, errors
+	}
+
 	var ok bool
 	form.UserId, ok = c.GetPostForm("userId")
 	if !ok {
@@ -79,7 +85,6 @@ func ParseGithubIssueRequest(c *gin.Context) (form CreateGithubIssueRequest, err
 
 	form.Email = c.PostForm("email")
 
-	var err error
 	form.File, err = c.FormFile("file")
 	if err != nil {
 		errors = append(errors, infra.Required("file"))

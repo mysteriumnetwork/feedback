@@ -28,6 +28,11 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+// Error represents error as string
+func (e Error) Error() string {
+	return e.Message
+}
+
 // Single creates an error response containing a single error
 func Single(err error) *ErrorResponse {
 	return Multiple([]error{err})

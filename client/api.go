@@ -95,7 +95,14 @@ func newCreateGithubIssueRequest(uri string, req CreateGithubIssueRequest) (mult
 	_ = writer.WriteField("description", req.Description)
 	_ = writer.WriteField("email", req.Email)
 	_ = writer.Close()
-	return http.NewRequest("POST", uri, body)
+
+	request, err := http.NewRequest("POST", uri, body)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create request")
+	}
+
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	return request, err
 }
 
 // CreateGithubIssueRequest create github issue request
