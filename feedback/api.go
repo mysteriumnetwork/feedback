@@ -23,6 +23,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path"
 
 	log "github.com/cihub/seelog"
 	"github.com/gin-gonic/gin"
@@ -127,7 +128,7 @@ func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
 		return
 	}
 
-	tempFile, err := ioutil.TempFile("", form.File.Filename)
+	tempFile, err := ioutil.TempFile("", path.Base(form.File.Filename))
 	if err != nil {
 		err := fmt.Errorf("could not allocate a temporary file: %w", err)
 		c.JSON(http.StatusInternalServerError, infra.Single(err))
