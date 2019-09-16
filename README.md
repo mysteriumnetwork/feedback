@@ -18,6 +18,8 @@ curl http://localhost:8080/api/v1/ping
 See [swagger.json](docs/swagger.json) for details.
 Or `curl http://localhost:8080/api/v1/swagger.json` on a running server
 
+Go API is available in `github.com/mysteriumnetwork/feedback/client` package.
+
 # Updating API
 
 Regenerate `swagger.json` (command below) and commit changes.
