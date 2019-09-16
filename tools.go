@@ -27,4 +27,5 @@ import (
 	_ "github.com/go-openapi/runtime"
 	_ "github.com/go-swagger/go-swagger"
 	_ "github.com/mailru/easyjson"
+	_ "golang.org/x/tools/imports"
 )
