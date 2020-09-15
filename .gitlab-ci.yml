@@ -29,7 +29,6 @@ test:
   tags: [docker]
   script:
     - go run mage.go -v test
-    - go run mage.go -v check
 
 build:
   stage: build
