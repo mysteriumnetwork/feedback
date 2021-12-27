@@ -15,14 +15,15 @@ import (
 
 // Endpoint user feedback endpoint
 type Endpoint struct {
-	reporter    *Reporter
-	storage     *Storage
-	rateLimiter *infra.RateLimiter
+	reporter         *Reporter
+	intercomReporter *IntercomReporter
+	storage          *Storage
+	rateLimiter      *infra.RateLimiter
 }
 
 // NewEndpoint creates new Endpoint
-func NewEndpoint(reporter *Reporter, storage *Storage, rateLimiter *infra.RateLimiter) *Endpoint {
-	return &Endpoint{reporter: reporter, storage: storage, rateLimiter: rateLimiter}
+func NewEndpoint(reporter *Reporter, intercomReporter *IntercomReporter, storage *Storage, rateLimiter *infra.RateLimiter) *Endpoint {
+	return &Endpoint{reporter: reporter, storage: storage, rateLimiter: rateLimiter, intercomReporter: intercomReporter}
 }
 
 // CreateGithubIssueRequest create github issue request
@@ -160,7 +161,164 @@ func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
 	})
 }
 
+// CreateIntercomIssueRequest create intercom issue request
+// swagger:parameters createIntercomIssue
+type CreateIntercomIssueRequest struct {
+	// in: formData
+	// required: false
+	UserId string `json:"userId"`
+	// in: formData
+	// required: true
+	NodeIdentity string `json:"nodeIdentity"`
+	// in: formData
+	// required: false
+	UserType string `json:"userType"`
+	// in: formData
+	// required: false
+	NodeCountry string `json:"nodeCountry"`
+	// in: formData
+	// required: false
+	IpType string `json:"ipType"`
+	// in: formData
+	// required: false
+	Ip string `json:"ip"`
+	// in: formData
+	// required: true
+	Description string `json:"description"`
+	// in: formData
+	Email string `json:"email"`
+	// in: formData
+	// required: true
+	// swagger:file
+	File *multipart.FileHeader `json:"file"`
+}
+
+// ParseIntercomIssueRequest parses CreateIntercomIssueRequest from HTTP request
+func ParseIntercomIssueRequest(c *gin.Context) (form CreateIntercomIssueRequest, errors []error) {
+	_, err := c.MultipartForm()
+	if err != nil {
+		errors = append(errors, apierror.APIError{Message: "could not parse form: " + err.Error()})
+		return form, errors
+	}
+
+	form.UserId = c.PostForm("userId")
+
+	var ok bool
+	form.NodeIdentity, ok = c.GetPostForm("nodeIdentity")
+	if !ok {
+		errors = append(errors, apierror.Required("nodeIdentity"))
+	}
+
+	form.UserType = c.PostForm("userType")
+	form.NodeCountry = c.PostForm("nodeCountry")
+	form.IpType = c.PostForm("ipType")
+	form.Ip = c.PostForm("ip")
+
+	form.Description, ok = c.GetPostForm("description")
+	if !ok {
+		errors = append(errors, apierror.Required("description"))
+	}
+
+	form.Email = c.PostForm("email")
+
+	form.File, err = c.FormFile("file")
+	if err != nil {
+		errors = append(errors, apierror.Required("file"))
+	}
+
+	return form, errors
+}
+
+// CreateIntercomIssue creates a new Intercom chat with the issue with user report
+//
+// swagger:operation POST /intercom createIntercomIssue
+// ---
+// summary: Creates a new Intercom chat with the issue with user report
+// description: 1 request per minute is allowed
+//
+// produces:
+// - application/json
+// consumes:
+// - multipart/form-data
+// responses:
+//   '200':
+//     description: Chat created in Intercom
+//     schema:
+//       "$ref": "#/definitions/CreateGithubIssueResponse"
+//   '400':
+//     description: Bad request
+//     schema:
+//       "$ref": "#/definitions/APIErrorResponse"
+//   '429':
+//     description: Too many requests
+//   '500':
+//     description: Internal server error
+//     schema:
+//       "$ref": "#/definitions/APIErrorResponse"
+//
+func (e *Endpoint) CreateIntercomIssue(c *gin.Context) {
+	form, requestErrs := ParseIntercomIssueRequest(c)
+	if len(requestErrs) > 0 {
+		c.JSON(http.StatusBadRequest, apierror.Multiple(requestErrs))
+		return
+	}
+
+	tempFile, err := ioutil.TempFile("", path.Base(form.File.Filename))
+	if err != nil {
+		apiError := apierror.New("Could not allocate a temporary file", err)
+		_ = log.Error(apiError.Wrapped())
+		c.JSON(http.StatusInternalServerError, apiError.ToResponse())
+		return
+	}
+	defer func() {
+		err := os.Remove(tempFile.Name())
+		if err != nil {
+			_ = log.Warn("Failed to remove temp file", err)
+		}
+	}()
+
+	err = c.SaveUploadedFile(form.File, tempFile.Name())
+	if err != nil {
+		apiError := apierror.New("Could not save the uploaded file", err)
+		_ = log.Error(apiError.Wrapped())
+		c.JSON(http.StatusInternalServerError, apiError.ToResponse())
+		return
+	}
+
+	// logURL, err := e.storage.Upload(tempFile.Name())
+	// if err != nil {
+	// 	apiError := apierror.New("could not upload file to the storage", err)
+	// 	_ = log.Error(apiError.Wrapped())
+	// 	c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
+	// 	return
+	// }
+
+	issueId, err := e.intercomReporter.ReportIssue(&IntercomReport{
+		UserId:       form.UserId,
+		NodeIdentity: form.NodeIdentity,
+		UserType:     form.UserType,
+		NodeCountry:  form.NodeCountry,
+		IpType:       form.IpType,
+		Ip:           form.Ip,
+		Description:  form.Description,
+		Email:        form.Email,
+		//LogURL:       *logURL,
+	})
+	if err != nil {
+		apiError := apierror.New("could not create intercom conversation", err)
+		_ = log.Error(apiError.Wrapped())
+		c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
+		return
+	}
+
+	log.Infof("Created intercom conversation from request %+v", form)
+	c.JSON(http.StatusOK, &CreateGithubIssueResponse{
+		IssueId: issueId,
+	})
+}
+
 // RegisterRoutes registers feedback API routes
 func (e *Endpoint) RegisterRoutes(r gin.IRoutes) {
 	r.POST("/github", e.rateLimiter.Handler(), e.CreateGithubIssue)
+	r.POST("/intercom", e.CreateIntercomIssue)
 }

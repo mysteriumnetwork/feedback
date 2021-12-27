@@ -42,6 +42,8 @@ const (
 	EnvGithubOwner = "GITHUB_OWNER"
 	// EnvGithubRepository Github repository for issue report
 	EnvGithubRepository = "GITHUB_REPOSITORY"
+	// EnvIntercomAccessToken Intercom token for API
+	EnvIntercomAccessToken = "INTERCOM_TOKEN"
 )
 
 func main() {
@@ -64,6 +66,7 @@ func app() (retValue int) {
 		EnvGithubAccessToken,
 		EnvGithubOwner,
 		EnvGithubRepository,
+		EnvIntercomAccessToken,
 	)
 	if err != nil {
 		_ = log.Critical(err)
@@ -86,8 +89,12 @@ func app() (retValue int) {
 	})
 	rateLimiter := infra.NewRateLimiter(0.0166) // 1/minute
 
+	intercomReporter := feedback.NewIntercomReporter(&feedback.NewIntercomReporterOpts{
+		Token: os.Getenv(EnvIntercomAccessToken),
+	})
+
 	srvr := server.New(
-		feedback.NewEndpoint(githubReporter, storage, rateLimiter),
+		feedback.NewEndpoint(githubReporter, intercomReporter, storage, rateLimiter),
 		infra.NewPingEndpoint(),
 		docs.NewEndpoint(),
 	)
