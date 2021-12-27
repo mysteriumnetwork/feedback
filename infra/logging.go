@@ -2,9 +2,6 @@ package infra
 
 import (
 	"bytes"
-	"flag"
-	"fmt"
-	"strings"
 	"text/template"
 
 	"github.com/cihub/seelog"
@@ -23,18 +20,12 @@ var CurrentLogOptions = &LogOptions{
 }
 
 var (
-	allLevels    = []string{seelog.TraceStr, seelog.DebugStr, seelog.InfoStr, seelog.WarnStr, seelog.ErrorStr, seelog.CriticalStr, seelog.OffStr}
-	logLevelFlag string
+	// AllLevels list containing all the possible log levels
+	AllLevels = []string{seelog.TraceStr, seelog.DebugStr, seelog.InfoStr, seelog.WarnStr, seelog.ErrorStr, seelog.CriticalStr, seelog.OffStr}
 )
 
-// RegisterLoggerFlags registers logger CLI flags
-func RegisterLoggerFlags() {
-	flag.StringVar(&logLevelFlag, "log-level", seelog.DebugStr, fmt.Sprintf("Service logging level (%s)", strings.Join(allLevels, "|")))
-}
-
 // ConfigureLogger configures options using parsed flag values
-func ConfigureLogger() {
-	level := logLevelFlag
+func ConfigureLogger(level string) {
 	levelInt, found := seelog.LogLevelFromString(level)
 	if !found {
 		levelInt = seelog.DebugLvl

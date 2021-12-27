@@ -1,0 +1,6 @@
+version: '3.0'
+services:
+  wiremock:
+    image: wiremock/wiremock
+    ports: 
+      - '8090:8080'

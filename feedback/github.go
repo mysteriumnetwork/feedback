@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net/url"
 	"strconv"
 	"text/template"
 	"time"
@@ -30,43 +29,35 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// Reporter reports issues to Github
-type Reporter struct {
+// GithubReporter reports issues to Github
+type GithubReporter struct {
 	client        *github.Client
 	owner         string
 	repository    string
 	issueTemplate *template.Template
 }
 
-// NewReporterOpts Reporter initialization options
-type NewReporterOpts struct {
+// NewGithubReporterOpts GithubReporter initialization options
+type NewGithubReporterOpts struct {
 	Token      string
 	Owner      string
 	Repository string
 }
 
-// NewReporter creates a new Reporter
-func NewReporter(opts *NewReporterOpts) *Reporter {
+// NewGithubReporter creates a new GithubReporter
+func NewGithubReporter(opts *NewGithubReporterOpts) *GithubReporter {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: opts.Token},
 	)
 	oauthClient := oauth2.NewClient(context.Background(), ts)
 	githubClient := github.NewClient(oauthClient)
 	issueTemplate := template.Must(template.New("issueTemplate").Parse(issueTemplate))
-	return &Reporter{
+	return &GithubReporter{
 		client:        githubClient,
 		owner:         opts.Owner,
 		repository:    opts.Repository,
 		issueTemplate: issueTemplate,
 	}
-}
-
-// Report user report data
-type Report struct {
-	UserId      string
-	Description string
-	Email       string
-	LogURL      url.URL
 }
 
 const issueTemplate = `
@@ -85,7 +76,7 @@ const issueTemplate = `
 `
 
 // ReportIssue reports issue
-func (rep *Reporter) ReportIssue(report *Report) (issueId string, err error) {
+func (rep *GithubReporter) ReportIssue(report *Report) (issueId string, err error) {
 	templateOpts := struct {
 		Description,
 		Email,

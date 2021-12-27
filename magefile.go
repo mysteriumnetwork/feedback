@@ -1,3 +1,4 @@
+//go:build mage
 // +build mage
 
 package main
@@ -5,8 +6,10 @@ package main
 import (
 	"github.com/fatih/color"
 	"github.com/magefile/mage/sh"
+	"github.com/mysteriumnetwork/feedback/ci"
 	"github.com/mysteriumnetwork/go-ci/commands"
 	"github.com/mysteriumnetwork/go-ci/shell"
+	"strings"
 )
 
 // Build builds the service
@@ -41,9 +44,36 @@ func Validate() error {
 	return shell.NewCmd("swagger validate ./docs/swagger.json").Run()
 }
 
-// Test runs tests
+// Test runs unit tests
 func Test() error {
-	return commands.Test("./...")
+	packages, err := unitTestPackages()
+	if err != nil {
+		return err
+	}
+	args := append([]string{"test", "-race", "-count=1", "-timeout", "5m"}, packages...)
+	return sh.RunV("go", args...)
+}
+
+func unitTestPackages() ([]string, error) {
+	allPackages, err := listPackages()
+	if err != nil {
+		return nil, err
+	}
+	packages := make([]string, 0)
+	for _, p := range allPackages {
+		if !strings.Contains(p, "e2e") {
+			packages = append(packages, p)
+		}
+	}
+	return packages, nil
+}
+
+func listPackages() ([]string, error) {
+	output, err := sh.Output("go", "list", "./...")
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(strings.Replace(output, "\r\n", "\n", -1), "\n"), nil
 }
 
 // CheckCopyright checks for issues with go imports
@@ -74,4 +104,9 @@ func Check() error {
 // Run runs the service
 func Run() error {
 	return sh.RunV("go", "run", "./cmd/main.go")
+}
+
+// E2E runs the e2e test suite
+func E2E() error {
+	return ci.E2E()
 }

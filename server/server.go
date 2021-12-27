@@ -1,7 +1,11 @@
 package server
 
 import (
+	"context"
+	"fmt"
 	"net/http"
+	"os"
+	"sync"
 	"time"
 
 	log "github.com/cihub/seelog"
@@ -16,13 +20,16 @@ type routes interface {
 
 // Server represents API server
 type Server struct {
-	routes []routes
+	routes   []routes
+	stopOnce sync.Once
+	stop     chan struct{}
 }
 
 // New creates a new API server
 func New(routes ...routes) *Server {
 	return &Server{
 		routes: routes,
+		stop:   make(chan struct{}),
 	}
 }
 
@@ -43,7 +50,30 @@ func (s *Server) Serve() error {
 		}
 	}
 
-	return r.Run()
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%v", port),
+		Handler: r,
+	}
+
+	go func() {
+		<-s.stop
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		srv.Shutdown(ctx)
+	}()
+
+	return srv.ListenAndServe()
+}
+
+// Stop stops the server
+func (s *Server) Stop() {
+	s.stopOnce.Do(func() {
+		close(s.stop)
+	})
 }
 
 // Logger forces gin to use our logger
