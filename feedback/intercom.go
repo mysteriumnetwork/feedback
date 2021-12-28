@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -34,6 +33,11 @@ import (
 
 const (
 	INTERCOM_BASE_API = "https://api.intercom.io"
+	USER_ROLE_KEY     = "user_role"
+	NODE_IDENTITY_KEY = "node_identity"
+	NODE_COUNTRY_KEY  = "node_country"
+	IP_TYPE_KEY       = "ip_type"
+	IP_KEY            = "ip"
 )
 
 // IntercomReporter reports issues to Intercom
@@ -86,7 +90,7 @@ Logs:
 `
 
 // ReportIssue creates a issue message for the user in intercom
-func (rep *IntercomReporter) ReportIssue(report *IntercomReport) (issueId string, err error) {
+func (rep *IntercomReporter) ReportIssue(report *IntercomReport) error {
 	templateOpts := struct {
 		Description,
 		Timestamp,
@@ -97,91 +101,118 @@ func (rep *IntercomReporter) ReportIssue(report *IntercomReport) (issueId string
 		LogURL:      report.LogURL.String(),
 	}
 	var body bytes.Buffer
-	err = rep.messageTemplate.Execute(&body, templateOpts)
+	err := rep.messageTemplate.Execute(&body, templateOpts)
 	if err != nil {
-		return "", fmt.Errorf("could not generate message body with report (%+v): %w", templateOpts, err)
+		return fmt.Errorf("could not generate message body with report (%+v): %w", templateOpts, err)
 	}
 
-	// try update visitor
-	err = rep.updateVisitor(report.UserId, &updateVisitorRequest{
+	if report.UserId != "" {
+		// try update visitor (will become lead)
+		err = rep.updateVisitor(report.UserId, &updateVisitorRequest{
+			Email: report.Email,
+			CustomAttributes: updateVisitorRequestCustomAttributes{
+				NodeIdentity: report.NodeIdentity,
+				IsConsumer:   (strings.ToLower(report.UserType) == "consumer"),
+				NodeCountry:  report.NodeCountry,
+				IpType:       report.IpType,
+				Ip:           report.Ip,
+			},
+		})
+		if err != nil {
+			log.Warn().Msgf("could not update visitor %s\n", report.UserId)
+		}
+		visitorUpdated := (err == nil)
+
+		// try update contact
+		contactUpdated := false
+		if !visitorUpdated {
+			contact, err := rep.client.Contacts.FindByUserID(report.UserId)
+			if err != nil {
+				log.Warn().Msgf("could not update contact %s\n", report.UserId)
+			}
+			if err == nil {
+				contact.Email = report.Email
+				contact.CustomAttributes[NODE_IDENTITY_KEY] = report.NodeIdentity
+				contact.CustomAttributes[NODE_COUNTRY_KEY] = report.NodeCountry
+				contact.CustomAttributes[USER_ROLE_KEY] = report.UserType
+				contact.CustomAttributes[IP_TYPE_KEY] = report.IpType
+				contact.CustomAttributes[IP_KEY] = report.Ip
+				_, err := rep.client.Contacts.Update(&contact)
+				if err != nil {
+					return fmt.Errorf("could not update contact (%s): %w", contact.ID, err)
+				}
+				contactUpdated = true
+			}
+		}
+		// try update user
+		userUpdated := false
+		if !visitorUpdated && !contactUpdated {
+			user, err := rep.client.Users.FindByUserID(report.UserId)
+			if err != nil {
+				log.Warn().Msgf("could not update user %s\n", report.UserId)
+			}
+			if err == nil {
+				user.Email = report.Email
+				user.CustomAttributes[NODE_IDENTITY_KEY] = report.NodeIdentity
+				user.CustomAttributes[NODE_COUNTRY_KEY] = report.NodeCountry
+				user.CustomAttributes[USER_ROLE_KEY] = report.UserType
+				user.CustomAttributes[IP_TYPE_KEY] = report.IpType
+				user.CustomAttributes[IP_KEY] = report.Ip
+				_, err := rep.client.Users.Save(&user)
+				if err != nil {
+					return fmt.Errorf("could not update user (%s): %w", user.ID, err)
+				}
+				userUpdated = true
+			}
+		}
+
+		if !visitorUpdated && !contactUpdated && !userUpdated {
+			return fmt.Errorf("could not update visitor, contact or user (%s): %w", report.UserId, err)
+		}
+
+		userType := "contact"
+		if userUpdated {
+			userType = "user"
+		}
+
+		err = rep.createConversation(&createConversationRequest{
+			From: createConversationRequestFrom{
+				UserType: userType,
+				UserId:   &report.UserId,
+			},
+			Body: body.String(),
+		})
+		if err != nil {
+			return fmt.Errorf("could not create conversation for user (%s): %w", report.UserId, err)
+		}
+		return nil
+	}
+
+	contact, err := rep.client.Contacts.Create(&intercom.Contact{
 		Email: report.Email,
-		CustomAttributes: updateVisitorRequestCustomAttributes{
-			NodeIdentity: report.NodeIdentity,
-			IsConsumer:   (strings.ToLower(report.UserType) == "consumer"),
-			NodeCountry:  report.NodeCountry,
-			IpType:       report.IpType,
-			Ip:           report.Ip,
+		CustomAttributes: map[string]interface{}{
+			NODE_IDENTITY_KEY: report.NodeIdentity,
+			NODE_COUNTRY_KEY:  report.NodeCountry,
+			USER_ROLE_KEY:     report.UserType,
+			IP_TYPE_KEY:       report.IpType,
+			IP_KEY:            report.Ip,
 		},
 	})
 	if err != nil {
-		log.Warn().Msg("could not update visitor")
-	}
-	visitorUpdated := (err == nil)
-
-	// try update contact
-	contactUpdated := false
-	if !visitorUpdated {
-		contact, err := rep.client.Contacts.FindByUserID(report.UserId)
-		if err != nil {
-			log.Warn().Msg("could not update contact")
-		}
-		if err == nil {
-			contact.Email = report.Email
-			contact.CustomAttributes["node_identity"] = report.NodeIdentity
-			contact.CustomAttributes["node_country"] = report.NodeCountry
-			contact.CustomAttributes["is_consumer"] = (strings.ToLower(report.UserType) == "consumer")
-			contact.CustomAttributes["ip_type"] = report.IpType
-			contact.CustomAttributes["ip"] = report.Ip
-			_, err := rep.client.Contacts.Update(&contact)
-			if err != nil {
-				return "", fmt.Errorf("could not update contact (%s): %w", contact.ID, err)
-			}
-			contactUpdated = true
-		}
-	}
-	// try update user
-	userUpdated := false
-	if !visitorUpdated && !contactUpdated {
-		user, err := rep.client.Users.FindByUserID(report.UserId)
-		if err != nil {
-			log.Warn().Msg("could not update user")
-		}
-		if err == nil {
-			user.Email = report.Email
-			user.CustomAttributes["node_identity"] = report.NodeIdentity
-			user.CustomAttributes["node_country"] = report.NodeCountry
-			user.CustomAttributes["is_consumer"] = (strings.ToLower(report.UserType) == "consumer")
-			user.CustomAttributes["ip_type"] = report.IpType
-			user.CustomAttributes["ip"] = report.Ip
-			_, err := rep.client.Users.Save(&user)
-			if err != nil {
-				return "", fmt.Errorf("could not update user (%s): %w", user.ID, err)
-			}
-			userUpdated = true
-		}
-	}
-
-	if !visitorUpdated && !contactUpdated && !userUpdated {
-		return "", fmt.Errorf("could not update visitor, contact or user (%s): %w", report.UserId, err)
-	}
-
-	userType := "contact"
-	if userUpdated {
-		userType = "user"
+		return fmt.Errorf("could not create contact: %w", err)
 	}
 
 	err = rep.createConversation(&createConversationRequest{
 		From: createConversationRequestFrom{
-			UserType: userType,
-			UserId:   report.UserId,
+			UserType: "contact",
+			Id:       &contact.ID,
 		},
 		Body: body.String(),
 	})
 	if err != nil {
-		return "", fmt.Errorf("could not create conversation for user (%s): %w", report.UserId, err)
+		return fmt.Errorf("could not create conversation for user with id (%s): %w", contact.ID, err)
 	}
-
-	return strconv.Itoa(123), nil
+	return nil
 }
 
 type updateVisitorRequestCustomAttributes struct {
@@ -221,8 +252,9 @@ func (rep *IntercomReporter) updateVisitor(userId string, updateVisitorRequest *
 }
 
 type createConversationRequestFrom struct {
-	UserType string `json:"type"`
-	UserId   string `json:"user_id"`
+	UserType string  `json:"type"`
+	UserId   *string `json:"user_id"`
+	Id       *string `json:"id"`
 }
 
 type createConversationRequest struct {

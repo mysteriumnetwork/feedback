@@ -186,6 +186,7 @@ type CreateIntercomIssueRequest struct {
 	// required: true
 	Description string `json:"description"`
 	// in: formData
+	// required: false
 	Email string `json:"email"`
 	// in: formData
 	// required: true
@@ -293,7 +294,7 @@ func (e *Endpoint) CreateIntercomIssue(c *gin.Context) {
 	// 	return
 	// }
 
-	issueId, err := e.intercomReporter.ReportIssue(&IntercomReport{
+	err = e.intercomReporter.ReportIssue(&IntercomReport{
 		UserId:       form.UserId,
 		NodeIdentity: form.NodeIdentity,
 		UserType:     form.UserType,
@@ -312,9 +313,7 @@ func (e *Endpoint) CreateIntercomIssue(c *gin.Context) {
 	}
 
 	log.Infof("Created intercom conversation from request %+v", form)
-	c.JSON(http.StatusOK, &CreateGithubIssueResponse{
-		IssueId: issueId,
-	})
+	c.Status(http.StatusCreated)
 }
 
 // RegisterRoutes registers feedback API routes
