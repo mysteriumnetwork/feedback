@@ -15,7 +15,7 @@ variables:
 
 docs:
   stage: prepare
-  image: golang:1.13
+  image: golang:1.17
   tags: [docker]
   artifacts:
     paths: [docs/]
@@ -25,13 +25,20 @@ docs:
 
 test:
   stage: test
-  image: golang:1.13
+  image: golang:1.17
   tags: [docker]
   script:
     - go run mage.go -v test
 
+e2e-tests:
+  stage: test
+  image: golang:1.17
+  tags: [go]
+  script:
+    - go run mage.go -v e2e
+
 build:
   stage: build
-  image: golang:1.13
+  image: golang:1.17
   tags: [docker]
   script: go run mage.go -v build

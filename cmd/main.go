@@ -25,23 +25,10 @@ import (
 	"os"
 
 	log "github.com/cihub/seelog"
-	"github.com/mysteriumnetwork/feedback/docs"
-	"github.com/mysteriumnetwork/feedback/feedback"
+	"github.com/mysteriumnetwork/feedback/constants"
+	"github.com/mysteriumnetwork/feedback/di"
 	"github.com/mysteriumnetwork/feedback/infra"
-	"github.com/mysteriumnetwork/feedback/server"
-)
-
-const (
-	// EnvAWSEndpointURL AWS URL for file upload
-	EnvAWSEndpointURL = "AWS_ENDPOINT_URL"
-	// EnvAWSBucket AWS bucket for file upload
-	EnvAWSBucket = "AWS_BUCKET"
-	// EnvGithubAccessToken Github credentials for issue report
-	EnvGithubAccessToken = "GITHUB_ACCESS_TOKEN"
-	// EnvGithubOwner Github owner of the repository for issue report
-	EnvGithubOwner = "GITHUB_OWNER"
-	// EnvGithubRepository Github repository for issue report
-	EnvGithubRepository = "GITHUB_REPOSITORY"
+	"github.com/mysteriumnetwork/feedback/params"
 )
 
 func main() {
@@ -49,7 +36,27 @@ func main() {
 }
 
 func app() (retValue int) {
-	configureFromFlags()
+	gparams := params.Generic{}
+	gparams.Init()
+
+	err := envPresent(
+		constants.EnvAWSEndpointURL,
+		constants.EnvAWSBucket,
+		constants.EnvGithubAccessToken,
+		constants.EnvGithubOwner,
+		constants.EnvGithubRepository,
+		constants.EnvIntercomAccessToken,
+	)
+	if err != nil {
+		_ = log.Critical(err)
+		return -1
+	}
+
+	eparams := params.Environment{}
+	eparams.Init()
+
+	flag.Parse()
+	infra.ConfigureLogger(*gparams.LogLevelFlag)
 	infra.BootstrapLogger(infra.CurrentLogOptions)
 
 	log.Info("Starting feedback service")
@@ -58,41 +65,16 @@ func app() (retValue int) {
 		log.Flush()
 	}()
 
-	err := envPresent(
-		EnvAWSEndpointURL,
-		EnvAWSBucket,
-		EnvGithubAccessToken,
-		EnvGithubOwner,
-		EnvGithubRepository,
-	)
+	container := &di.Container{}
+	defer container.Cleanup()
+
+	server, err := container.ConstructServer(gparams, eparams)
 	if err != nil {
-		_ = log.Critical(err)
+		_ = log.Critical("Error constructing API server: ", err)
 		return -1
 	}
 
-	storage, err := feedback.New(&feedback.NewStorageOpts{
-		EndpointURL: os.Getenv(EnvAWSEndpointURL),
-		Bucket:      os.Getenv(EnvAWSBucket),
-	})
-	if err != nil {
-		_ = log.Critical("Failed to initialize storage: ", err)
-		return -1
-	}
-
-	githubReporter := feedback.NewReporter(&feedback.NewReporterOpts{
-		Token:      os.Getenv(EnvGithubAccessToken),
-		Owner:      os.Getenv(EnvGithubOwner),
-		Repository: os.Getenv(EnvGithubRepository),
-	})
-	rateLimiter := infra.NewRateLimiter(0.0166) // 1/minute
-
-	srvr := server.New(
-		feedback.NewEndpoint(githubReporter, storage, rateLimiter),
-		infra.NewPingEndpoint(),
-		docs.NewEndpoint(),
-	)
-
-	err = srvr.Serve()
+	err = server.Serve()
 	if err != nil {
 		_ = log.Critical("Error running API server: ", err)
 		return -1
@@ -108,10 +90,4 @@ func envPresent(vars ...string) error {
 		}
 	}
 	return nil
-}
-
-func configureFromFlags() {
-	infra.RegisterLoggerFlags()
-	flag.Parse()
-	infra.ConfigureLogger()
 }
