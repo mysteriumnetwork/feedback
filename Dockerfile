@@ -1,4 +1,4 @@
-FROM 1.17.6-alpine3.15 AS builder
+FROM golang:1.17.6-alpine3.15 AS builder
 
 # Install packages
 RUN apk add --no-cache bash gcc musl-dev git curl
