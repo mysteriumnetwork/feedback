@@ -31,13 +31,14 @@ import (
 
 // keys of intercom custom attributes
 const (
-	USER_ROLE_KEY     = "user_role"
-	NODE_IDENTITY_KEY = "node_identity"
-	NODE_COUNTRY_KEY  = "node_country"
-	IP_TYPE_KEY       = "ip_type"
-	IP_KEY            = "ip"
-	CONTACT_TYPE      = "contact"
-	USER_TYPE         = "user"
+	USER_ROLE_KEY             = "user_role"
+	NODE_IDENTITY_KEY         = "node_identity"
+	NODE_COUNTRY_KEY          = "node_country"
+	IP_TYPE_KEY               = "ip_type"
+	IP_KEY                    = "ip"
+	CONTACT_TYPE              = "contact"
+	USER_TYPE                 = "user"
+	DEFAULT_INTERCOM_BASE_URL = "https://api.intercom.io"
 )
 
 // IntercomReporter reports issues to Intercom
@@ -57,15 +58,21 @@ type NewIntercomReporterOpts struct {
 // NewIntercomReporter creates a new IntercomReporter
 func NewIntercomReporter(opts *NewIntercomReporterOpts) *IntercomReporter {
 	intercomClient := intercom.NewClient(opts.Token, "")
-	setBaseURI := intercom.BaseURI(opts.IntercomBaseURL)
-	intercomClient.Option(setBaseURI)
+	if opts.IntercomBaseURL != "" {
+		setBaseURI := intercom.BaseURI(opts.IntercomBaseURL)
+		intercomClient.Option(setBaseURI)
+	}
 	messageTemplate := template.Must(template.New("messageTemplate").Parse(messageTemplate))
-	return &IntercomReporter{
+	rep := &IntercomReporter{
 		client:          intercomClient,
 		messageTemplate: messageTemplate,
 		httpClient:      &http.Client{},
-		intercomBaseURL: opts.IntercomBaseURL,
+		intercomBaseURL: DEFAULT_INTERCOM_BASE_URL,
 	}
+	if opts.IntercomBaseURL != "" {
+		rep.intercomBaseURL = opts.IntercomBaseURL
+	}
+	return rep
 }
 
 const messageTemplate = `
