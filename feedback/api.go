@@ -357,21 +357,23 @@ func (e *Endpoint) CreateIntercomIssue(c *gin.Context) {
 		report.LogURL = *logURL
 	}
 
-	// Temporary: we will also create a github issue so logs can be easily accessed from old mmn
-	issueId, err := e.githubReporter.ReportIssue(&Report{
-		UserId:      form.NodeIdentity,
-		Description: form.Description,
-		Email:       form.Email,
-		LogURL:      report.LogURL,
-	})
-	if err != nil {
-		apiError := apierror.New("could not report issue to github", err)
-		_ = log.Error(apiError.Wrapped())
-		c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
-		return
-	}
+	// Temporary: we will also create a github issue so logs can be easily accessed from old mmn (disabled in e2e tests)
+	if !*e.skipFileUpload {
+		issueId, err := e.githubReporter.ReportIssue(&Report{
+			UserId:      form.NodeIdentity,
+			Description: form.Description,
+			Email:       form.Email,
+			LogURL:      report.LogURL,
+		})
+		if err != nil {
+			apiError := apierror.New("could not report issue to github", err)
+			_ = log.Error(apiError.Wrapped())
+			c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
+			return
+		}
 
-	log.Infof("Created github issue %q from request %+v", issueId, form)
+		log.Infof("Created github issue %q from request %+v", issueId, form)
+	}
 	// Temporary end
 
 	conversationId, err := e.intercomReporter.ReportIssue(report)
