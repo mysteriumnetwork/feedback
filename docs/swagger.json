@@ -86,6 +86,101 @@
         }
       }
     },
+    "/intercom": {
+      "post": {
+        "description": "1 request per minute is allowed",
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "summary": "Creates a new Intercom chat with the issue with user report",
+        "operationId": "createIntercomIssue",
+        "parameters": [
+          {
+            "type": "string",
+            "x-go-name": "UserId",
+            "name": "userId",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "x-go-name": "NodeIdentity",
+            "name": "nodeIdentity",
+            "in": "formData",
+            "required": true
+          },
+          {
+            "type": "string",
+            "x-go-name": "UserType",
+            "name": "userType",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "x-go-name": "NodeCountry",
+            "name": "nodeCountry",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "x-go-name": "IpType",
+            "name": "ipType",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "x-go-name": "Ip",
+            "name": "ip",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "x-go-name": "Description",
+            "name": "description",
+            "in": "formData",
+            "required": true
+          },
+          {
+            "type": "string",
+            "x-go-name": "Email",
+            "name": "email",
+            "in": "formData"
+          },
+          {
+            "type": "file",
+            "x-go-name": "File",
+            "name": "file",
+            "in": "formData",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat created in Intercom",
+            "schema": {
+              "$ref": "#/definitions/CreateIntercomIssueResponse"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/APIErrorResponse"
+            }
+          },
+          "429": {
+            "description": "Too many requests"
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/APIErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "/ping": {
       "get": {
         "summary": "Responds to ping",
@@ -137,6 +232,17 @@
         "issueId": {
           "type": "string",
           "x-go-name": "IssueId"
+        }
+      },
+      "x-go-package": "github.com/mysteriumnetwork/feedback/feedback"
+    },
+    "CreateIntercomIssueResponse": {
+      "description": "CreateIntercomIssueResponse represents a successful intercom issue creation",
+      "type": "object",
+      "properties": {
+        "conversationId": {
+          "type": "string",
+          "x-go-name": "ConversationId"
         }
       },
       "x-go-package": "github.com/mysteriumnetwork/feedback/feedback"
