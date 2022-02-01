@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path"
 	"text/template"
 	"time"
 
@@ -84,20 +85,21 @@ Description:
 
 Logs:
 
-{{.LogURL}}
+{{.LogKey}}
 
 `
 
 // ReportIssue creates a issue message for the user in intercom
 func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string, err error) {
+	key := path.Base(report.LogURL.String())
 	templateOpts := struct {
 		Description,
 		Timestamp,
-		LogURL string
+		LogKey string
 	}{
 		Description: report.Description,
 		Timestamp:   time.Now().String(),
-		LogURL:      report.LogURL.String(),
+		LogKey:      key,
 	}
 	var body bytes.Buffer
 	err = rep.messageTemplate.Execute(&body, templateOpts)

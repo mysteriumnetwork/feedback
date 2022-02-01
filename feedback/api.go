@@ -20,7 +20,6 @@ type Endpoint struct {
 	intercomReporter Reporter
 	storage          Uploader
 	rateLimiter      *infra.RateLimiter
-	skipFileUpload   *bool
 }
 
 // Uploader uploads a file and returns the url
@@ -47,8 +46,8 @@ type Reporter interface {
 }
 
 // NewEndpoint creates new Endpoint
-func NewEndpoint(githubReporter Reporter, intercomReporter Reporter, storage Uploader, rateLimiter *infra.RateLimiter, skipFileUpload *bool) *Endpoint {
-	return &Endpoint{githubReporter: githubReporter, storage: storage, rateLimiter: rateLimiter, intercomReporter: intercomReporter, skipFileUpload: skipFileUpload}
+func NewEndpoint(githubReporter Reporter, intercomReporter Reporter, storage Uploader, rateLimiter *infra.RateLimiter) *Endpoint {
+	return &Endpoint{githubReporter: githubReporter, storage: storage, rateLimiter: rateLimiter, intercomReporter: intercomReporter}
 }
 
 // CreateGithubIssueRequest create github issue request
@@ -159,25 +158,19 @@ func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
 		return
 	}
 
-	var logURL *url.URL
-	if !*e.skipFileUpload {
-		logURL, err = e.storage.Upload(tempFile.Name())
-		if err != nil {
-			apiError := apierror.New("could not upload file to the storage", err)
-			_ = log.Error(apiError.Wrapped())
-			c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
-			return
-		}
+	logURL, err := e.storage.Upload(tempFile.Name())
+	if err != nil {
+		apiError := apierror.New("could not upload file to the storage", err)
+		_ = log.Error(apiError.Wrapped())
+		c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
+		return
 	}
 
 	report := &Report{
 		UserId:      form.UserId,
 		Description: form.Description,
 		Email:       form.Email,
-	}
-
-	if logURL != nil {
-		report.LogURL = *logURL
+		LogURL:      *logURL,
 	}
 
 	issueId, err := e.githubReporter.ReportIssue(report)
@@ -331,15 +324,12 @@ func (e *Endpoint) CreateIntercomIssue(c *gin.Context) {
 		return
 	}
 
-	var logURL *url.URL
-	if !*e.skipFileUpload {
-		logURL, err = e.storage.Upload(tempFile.Name())
-		if err != nil {
-			apiError := apierror.New("could not upload file to the storage", err)
-			_ = log.Error(apiError.Wrapped())
-			c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
-			return
-		}
+	logURL, err := e.storage.Upload(tempFile.Name())
+	if err != nil {
+		apiError := apierror.New("could not upload file to the storage", err)
+		_ = log.Error(apiError.Wrapped())
+		c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
+		return
 	}
 
 	report := &Report{
@@ -351,29 +341,24 @@ func (e *Endpoint) CreateIntercomIssue(c *gin.Context) {
 		Ip:           form.Ip,
 		Description:  form.Description,
 		Email:        form.Email,
-	}
-
-	if logURL != nil {
-		report.LogURL = *logURL
+		LogURL:       *logURL,
 	}
 
 	// Temporary: we will also create a github issue so logs can be easily accessed from old mmn (disabled in e2e tests)
-	if !*e.skipFileUpload {
-		issueId, err := e.githubReporter.ReportIssue(&Report{
-			UserId:      form.NodeIdentity,
-			Description: form.Description,
-			Email:       form.Email,
-			LogURL:      report.LogURL,
-		})
-		if err != nil {
-			apiError := apierror.New("could not report issue to github", err)
-			_ = log.Error(apiError.Wrapped())
-			c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
-			return
-		}
+	// issueId, err := e.githubReporter.ReportIssue(&Report{
+	// 	UserId:      form.NodeIdentity,
+	// 	Description: form.Description,
+	// 	Email:       form.Email,
+	// 	LogURL:      report.LogURL,
+	// })
+	// if err != nil {
+	// 	apiError := apierror.New("could not report issue to github", err)
+	// 	_ = log.Error(apiError.Wrapped())
+	// 	c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
+	// 	return
+	// }
 
-		log.Infof("Created github issue %q from request %+v", issueId, form)
-	}
+	// log.Infof("Created github issue %q from request %+v", issueId, form)
 	// Temporary end
 
 	conversationId, err := e.intercomReporter.ReportIssue(report)

@@ -10,9 +10,13 @@ import (
 
 func TestIntercomReporting(t *testing.T) {
 	wiremockClient := wiremock.NewClient("http://localhost:8090")
+	s3Downloader, err := newS3Downloader("node-user-reports")
+	assert.NoError(t, err)
 
 	t.Run("report an issue on intercom with userId (visitor)", func(t *testing.T) {
 		userId := "dfcte009-73cc-4638-be3d-f4tjd22a22a2"
+		filename := "file1.txt"
+		fileContent := []byte("hello")
 		defer wiremockClient.Reset()
 		err := wiremockClient.StubFor(wiremock.Get(wiremock.URLPathMatching("/visitors")).WithQueryParam("user_id", wiremock.EqualTo(userId)).WillReturn(
 			`{"type":"visitor","id":"61cdbfc18b3349339c0b626c","user_id":"dfcte009-73cc-4638-be3d-f4tjd22a22a2","anonymous":true,"email":""}`,
@@ -40,13 +44,18 @@ func TestIntercomReporting(t *testing.T) {
 			NodeIdentity: "0x5345765675656",
 			Description:  "long description for an issue that I have in my node",
 		}
-		errResp := SendReportIntercomIssueRequest(t, req, []byte("hello"))
+		errResp := SendReportIntercomIssueRequest(t, req, filename, fileContent)
 		assert.Nil(t, errResp)
+		content, err := s3Downloader.getFileContent(t, filename)
+		assert.NoError(t, err)
+		assert.Equal(t, fileContent, content)
 	})
 
 	t.Run("report an issue on intercom with userId (lead)", func(t *testing.T) {
 		userId := "dfyye009-73cc-4888-be3d-f4t6666662a2"
 		id := "61cd88818b3349339c44426c"
+		filename := "file2.txt"
+		fileContent := []byte("hello-2")
 		defer wiremockClient.Reset()
 		err := wiremockClient.StubFor(wiremock.Get(
 			wiremock.URLPathMatching("/contacts")).
@@ -81,7 +90,7 @@ func TestIntercomReporting(t *testing.T) {
 			NodeIdentity: "0x5345765675656",
 			Description:  "long description for an issue that I have in my node",
 		}
-		errResp := SendReportIntercomIssueRequest(t, req, []byte("hello"))
+		errResp := SendReportIntercomIssueRequest(t, req, filename, fileContent)
 		assert.Nil(t, errResp)
 		count, err := wiremockClient.GetCountRequests(wiremock.Get(
 			wiremock.URLPathMatching("/contacts")).
@@ -93,11 +102,16 @@ func TestIntercomReporting(t *testing.T) {
 				WithBodyPattern(wiremock.MatchingJsonPath("$[?(@.id == '" + id + "')]")).Request())
 		assert.Nil(t, err)
 		assert.Equal(t, 1, int(count))
+		content, err := s3Downloader.getFileContent(t, filename)
+		assert.NoError(t, err)
+		assert.Equal(t, fileContent, content)
 	})
 
 	t.Run("report an issue on intercom with userId (user)", func(t *testing.T) {
 		userId := "d77709-73cc-4888-be3d-f4t6aaaa62a2"
 		id := "61cd8887777779339c44426c"
+		filename := "file3.txt"
+		fileContent := []byte("hello-3")
 		defer wiremockClient.Reset()
 		err := wiremockClient.StubFor(wiremock.Get(
 			wiremock.URLPathMatching("/users")).
@@ -131,7 +145,7 @@ func TestIntercomReporting(t *testing.T) {
 			NodeIdentity: "0x5345765675656",
 			Description:  "long description for an issue that I have in my node",
 		}
-		errResp := SendReportIntercomIssueRequest(t, req, []byte("hello"))
+		errResp := SendReportIntercomIssueRequest(t, req, filename, fileContent)
 		assert.Nil(t, errResp)
 		count, err := wiremockClient.GetCountRequests(
 			wiremock.Get(wiremock.URLPathMatching("/users")).
@@ -143,10 +157,15 @@ func TestIntercomReporting(t *testing.T) {
 			WithBodyPattern(wiremock.MatchingJsonPath("$[?(@.id == '" + id + "')]")).Request())
 		assert.Nil(t, err)
 		assert.Equal(t, 1, int(count))
+		content, err := s3Downloader.getFileContent(t, filename)
+		assert.NoError(t, err)
+		assert.Equal(t, fileContent, content)
 	})
 
 	t.Run("user not found", func(t *testing.T) {
 		userId := "dfcte009-73cc-4638-be3d-f4tjd22a22a2"
+		filename := "file4.txt"
+		fileContent := []byte("hello-4")
 		defer wiremockClient.Reset()
 
 		err := wiremockClient.StubFor(wiremock.Post(
@@ -164,7 +183,7 @@ func TestIntercomReporting(t *testing.T) {
 			NodeIdentity: "0x5345765675656",
 			Description:  "long description for an issue that I have in my node",
 		}
-		errResp := SendReportIntercomIssueRequest(t, req, []byte("hello"))
+		errResp := SendReportIntercomIssueRequest(t, req, filename, fileContent)
 		assert.NotNil(t, errResp)
 		assert.Equal(t, 503, errResp.Code)
 		assert.Contains(t, errResp.Errors[0].Message, "could not create intercom conversation")
@@ -172,6 +191,8 @@ func TestIntercomReporting(t *testing.T) {
 
 	t.Run("report an issue on intercom with email", func(t *testing.T) {
 		email := "email@something.com"
+		filename := "file5.txt"
+		fileContent := []byte("hello-5")
 		defer wiremockClient.Reset()
 		err := wiremockClient.StubFor(wiremock.Post(
 			wiremock.URLPathMatching("/contacts")).
@@ -197,7 +218,10 @@ func TestIntercomReporting(t *testing.T) {
 			NodeIdentity: "0x5345765675656",
 			Description:  "long description for an issue that I have in my node",
 		}
-		errResp := SendReportIntercomIssueRequest(t, req, []byte("hello"))
+		errResp := SendReportIntercomIssueRequest(t, req, filename, fileContent)
 		assert.Nil(t, errResp)
+		content, err := s3Downloader.getFileContent(t, filename)
+		assert.NoError(t, err)
+		assert.Equal(t, fileContent, content)
 	})
 }

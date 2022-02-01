@@ -20,7 +20,7 @@ func (m *mockReporter) ReportIssue(report *Report) (issueId string, err error) {
 type mockUploader struct{}
 
 func (m *mockUploader) Upload(filepath string) (url *url.URL, err error) {
-	url, err = url.Parse("http://uploadurl.com/file-id")
+	url, err = url.Parse("http://uploadurl.com/" + filepath)
 	if err != nil {
 		return nil, err
 	}
@@ -28,8 +28,7 @@ func (m *mockUploader) Upload(filepath string) (url *url.URL, err error) {
 }
 
 func TestApi(t *testing.T) {
-	skipFileUpload := false
-	endpoint := NewEndpoint(&mockReporter{}, &mockReporter{}, &mockUploader{}, infra.NewRateLimiter(99999), &skipFileUpload)
+	endpoint := NewEndpoint(&mockReporter{}, &mockReporter{}, &mockUploader{}, infra.NewRateLimiter(99999))
 
 	srvr := server.New(
 		endpoint,
@@ -39,6 +38,7 @@ func TestApi(t *testing.T) {
 	tests := []struct {
 		name          string
 		request       *client.CreateIntercomIssueRequest
+		filename      string
 		fileContent   []byte
 		fails         bool
 		errorContains string
@@ -51,6 +51,7 @@ func TestApi(t *testing.T) {
 				Description:  "too short",
 				NodeIdentity: "0x55345345345345345",
 			},
+			"filename1.txt",
 			[]byte("hello test file"),
 			true,
 			"too short",
@@ -63,6 +64,7 @@ func TestApi(t *testing.T) {
 				Description:  "description which has enough length to be okay",
 				NodeIdentity: "",
 			},
+			"filename1.txt",
 			[]byte("hello test file"),
 			true,
 			"field is required: nodeIdentity",
@@ -74,6 +76,7 @@ func TestApi(t *testing.T) {
 				UserId:      "sdadas-424-dsfsd",
 				Description: "description which has enough length to be okay",
 			},
+			"filename1.txt",
 			[]byte("hello test file"),
 			true,
 			"field is required: nodeIdentity",
@@ -86,6 +89,7 @@ func TestApi(t *testing.T) {
 				Description:  "description which has enough length to be okay",
 				NodeIdentity: "0x55345345345345345",
 			},
+			"filename1.txt",
 			[]byte{},
 			true,
 			"field is required: file",
@@ -97,6 +101,7 @@ func TestApi(t *testing.T) {
 				Description:  "description which has enough length to be okay",
 				NodeIdentity: "0x55345345345345345",
 			},
+			"filename1.txt",
 			[]byte("hello test file"),
 			true,
 			"field is required: email or userId",
@@ -109,6 +114,7 @@ func TestApi(t *testing.T) {
 				Description:  "description which has enough length to be okay",
 				NodeIdentity: "0x55345345345345345",
 			},
+			"filename1.txt",
 			[]byte("hello test file"),
 			false,
 			"",
@@ -121,6 +127,7 @@ func TestApi(t *testing.T) {
 				Description:  "description which has enough length to be okay",
 				NodeIdentity: "0x55345345345345345",
 			},
+			"filename1.txt",
 			[]byte("hello test file"),
 			false,
 			"",
@@ -129,7 +136,7 @@ func TestApi(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := e2e.SendReportIntercomIssueRequest(t, test.request, test.fileContent)
+			err := e2e.SendReportIntercomIssueRequest(t, test.request, test.filename, test.fileContent)
 			if test.fails {
 				assert.NotNil(t, err)
 				assert.Equal(t, 400, err.Code)

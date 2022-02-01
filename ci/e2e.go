@@ -22,16 +22,14 @@ func E2E() error {
 	time.Sleep(time.Second * 2)
 
 	logLevel := seelog.DebugStr
-	skipFileUpload := true
 	requestsPerSecond := 9999999999.0
 	gparams := params.Generic{
 		LogLevelFlag:      &logLevel,
-		SkipFileUpload:    &skipFileUpload,
 		RequestsPerSecond: &requestsPerSecond,
 	}
 
-	envAWSEndpointURL := "http://localhost:8090"
-	envAWSBucket := "random-bucket"
+	envAWSEndpointURL := "http://localhost:9090"
+	envAWSBucket := "node-user-reports"
 	envGithubAccessToken := "github-token"
 	envGithubOwner := "github-owner"
 	envGithubRepository := "github-repo"

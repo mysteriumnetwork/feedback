@@ -44,7 +44,7 @@ func (c *Container) ConstructServer(gparams params.Generic, eparams params.Envir
 	})
 
 	srvr := server.New(
-		feedback.NewEndpoint(githubReporter, intercomReporter, storage, rateLimiter, gparams.SkipFileUpload),
+		feedback.NewEndpoint(githubReporter, intercomReporter, storage, rateLimiter),
 		infra.NewPingEndpoint(),
 		docs.NewEndpoint(),
 	)
