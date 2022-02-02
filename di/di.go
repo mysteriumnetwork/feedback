@@ -41,6 +41,7 @@ func (c *Container) ConstructServer(gparams params.Generic, eparams params.Envir
 	intercomReporter := feedback.NewIntercomReporter(&feedback.NewIntercomReporterOpts{
 		Token:           *eparams.EnvIntercomAccessToken,
 		IntercomBaseURL: *eparams.EnvIntercomBaseURL,
+		LogProxyBaseUrl: *gparams.LogProxyBaseUrl,
 	})
 
 	srvr := server.New(

@@ -1,11 +1,11 @@
 version: '3.0'
 services:
   wiremock:
-    image: wiremock/wiremock
+    image: wiremock/wiremock:2.32.0
     ports: 
       - '8090:8080'
   s3-mock:
-    image: adobe/s3mock
+    image: adobe/s3mock:2.4.6
     ports:
       - 9090:9090
     environment:

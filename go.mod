@@ -18,7 +18,6 @@ require (
 	github.com/magefile/mage v1.8.0
 	github.com/mailru/easyjson v0.7.7
 	github.com/mysteriumnetwork/go-ci v0.0.0-20211124142828-37ca8ff3ef34
-	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.26.1
 	github.com/stretchr/testify v1.7.0
 	github.com/walkerus/go-wiremock v1.2.0
