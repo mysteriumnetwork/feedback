@@ -32,9 +32,10 @@ func (c *Container) ConstructServer(gparams params.Generic, eparams params.Envir
 	}
 
 	githubReporter := feedback.NewGithubReporter(&feedback.NewGithubReporterOpts{
-		Token:      *eparams.EnvGithubAccessToken,
-		Owner:      *eparams.EnvGithubOwner,
-		Repository: *eparams.EnvGithubRepository,
+		Token:           *eparams.EnvGithubAccessToken,
+		Owner:           *eparams.EnvGithubOwner,
+		Repository:      *eparams.EnvGithubRepository,
+		LogProxyBaseUrl: *gparams.LogProxyBaseUrl,
 	})
 	rateLimiter := infra.NewRateLimiter(*gparams.RequestsPerSecond)
 
