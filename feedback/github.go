@@ -21,7 +21,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"path"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -31,17 +33,19 @@ import (
 
 // GithubReporter reports issues to Github
 type GithubReporter struct {
-	client        *github.Client
-	owner         string
-	repository    string
-	issueTemplate *template.Template
+	client          *github.Client
+	owner           string
+	repository      string
+	issueTemplate   *template.Template
+	logProxyBaseUrl string
 }
 
 // NewGithubReporterOpts GithubReporter initialization options
 type NewGithubReporterOpts struct {
-	Token      string
-	Owner      string
-	Repository string
+	Token           string
+	Owner           string
+	Repository      string
+	LogProxyBaseUrl string
 }
 
 // NewGithubReporter creates a new GithubReporter
@@ -53,10 +57,11 @@ func NewGithubReporter(opts *NewGithubReporterOpts) *GithubReporter {
 	githubClient := github.NewClient(oauthClient)
 	issueTemplate := template.Must(template.New("issueTemplate").Parse(issueTemplate))
 	return &GithubReporter{
-		client:        githubClient,
-		owner:         opts.Owner,
-		repository:    opts.Repository,
-		issueTemplate: issueTemplate,
+		client:          githubClient,
+		owner:           opts.Owner,
+		repository:      opts.Repository,
+		issueTemplate:   issueTemplate,
+		logProxyBaseUrl: strings.TrimSuffix(opts.LogProxyBaseUrl, "/"),
 	}
 }
 
@@ -71,24 +76,27 @@ const issueTemplate = `
 
 ### Logs
 
-{{.LogURL}}
+{{.LogProxyBaseUrl}}/{{.LogKey}}
 
 `
 
 // ReportIssue reports issue
 func (rep *GithubReporter) ReportIssue(report *Report) (issueId string, err error) {
+	key := path.Base(report.LogURL.String())
 	templateOpts := struct {
 		Description,
 		Email,
 		Identity,
 		Timestamp,
-		LogURL string
+		LogKey,
+		LogProxyBaseUrl string
 	}{
-		Description: report.Description,
-		Email:       report.Email,
-		Identity:    report.UserId,
-		Timestamp:   time.Now().String(),
-		LogURL:      report.LogURL.String(),
+		Description:     report.Description,
+		Email:           report.Email,
+		Identity:        report.UserId,
+		Timestamp:       time.Now().String(),
+		LogKey:          key,
+		LogProxyBaseUrl: rep.logProxyBaseUrl,
 	}
 	var body bytes.Buffer
 	err = rep.issueTemplate.Execute(&body, templateOpts)
