@@ -22,6 +22,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path"
+	"strings"
 	"text/template"
 	"time"
 
@@ -47,12 +49,14 @@ type IntercomReporter struct {
 	httpClient      *http.Client
 	messageTemplate *template.Template
 	intercomBaseURL string
+	logProxyBaseUrl string
 }
 
 // NewIntercomReporterOpts Reporter initialization options
 type NewIntercomReporterOpts struct {
 	Token           string
 	IntercomBaseURL string
+	LogProxyBaseUrl string
 }
 
 // NewIntercomReporter creates a new IntercomReporter
@@ -68,6 +72,7 @@ func NewIntercomReporter(opts *NewIntercomReporterOpts) *IntercomReporter {
 		messageTemplate: messageTemplate,
 		httpClient:      &http.Client{},
 		intercomBaseURL: DEFAULT_INTERCOM_BASE_URL,
+		logProxyBaseUrl: strings.TrimSuffix(opts.LogProxyBaseUrl, "/"),
 	}
 	if opts.IntercomBaseURL != "" {
 		rep.intercomBaseURL = opts.IntercomBaseURL
@@ -84,20 +89,23 @@ Description:
 
 Logs:
 
-{{.LogURL}}
+{{.LogProxyBaseUrl}}/{{.LogKey}}
 
 `
 
 // ReportIssue creates a issue message for the user in intercom
 func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string, err error) {
+	key := path.Base(report.LogURL.String())
 	templateOpts := struct {
 		Description,
 		Timestamp,
-		LogURL string
+		LogKey,
+		LogProxyBaseUrl string
 	}{
-		Description: report.Description,
-		Timestamp:   time.Now().String(),
-		LogURL:      report.LogURL.String(),
+		Description:     report.Description,
+		Timestamp:       time.Now().String(),
+		LogKey:          key,
+		LogProxyBaseUrl: rep.logProxyBaseUrl,
 	}
 	var body bytes.Buffer
 	err = rep.messageTemplate.Execute(&body, templateOpts)
@@ -140,7 +148,7 @@ func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string,
 				}
 				_, err := rep.client.Contacts.Update(&contact)
 				if err != nil {
-					return "", fmt.Errorf("could not update contact (%s): %w", contact.ID, err)
+					return "", fmt.Errorf("could not update contact (%v): %w", contact, err)
 				}
 				contactUpdated = true
 			}

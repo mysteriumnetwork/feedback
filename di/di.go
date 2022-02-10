@@ -41,10 +41,11 @@ func (c *Container) ConstructServer(gparams params.Generic, eparams params.Envir
 	intercomReporter := feedback.NewIntercomReporter(&feedback.NewIntercomReporterOpts{
 		Token:           *eparams.EnvIntercomAccessToken,
 		IntercomBaseURL: *eparams.EnvIntercomBaseURL,
+		LogProxyBaseUrl: *gparams.LogProxyBaseUrl,
 	})
 
 	srvr := server.New(
-		feedback.NewEndpoint(githubReporter, intercomReporter, storage, rateLimiter, gparams.SkipFileUpload),
+		feedback.NewEndpoint(githubReporter, intercomReporter, storage, rateLimiter),
 		infra.NewPingEndpoint(),
 		docs.NewEndpoint(),
 	)

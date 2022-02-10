@@ -3,14 +3,13 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 	"path"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 const basePath = "/api/v1"
@@ -47,13 +46,12 @@ func (f *FeedbackAPI) apiURL(apiPath string) string {
 func (f *FeedbackAPI) CreateGithubIssue(request CreateGithubIssueRequest) (response *CreateGithubIssueResult, err error) {
 	multipartReq, err := newCreateGithubIssueRequest(f.apiURL("/github"), request)
 	if err != nil {
-		// For now not using fmt.Errorf with %w for compatibility with go <1.13
-		return nil, errors.Wrap(err, "could not create multipart request")
+		return nil, fmt.Errorf("could not create multipart request: %w", err)
 	}
 
 	resp, err := f.http.Do(multipartReq)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed request to feedback service")
+		return nil, fmt.Errorf("failed request to feedback service: %w", err)
 	}
 	return parseCreateGithubIssueResult(resp)
 }
@@ -62,13 +60,12 @@ func (f *FeedbackAPI) CreateGithubIssue(request CreateGithubIssueRequest) (respo
 func (f *FeedbackAPI) CreateIntercomIssue(request CreateIntercomIssueRequest) (response *CreateIntercomIssueResult, err error) {
 	multipartReq, err := newCreateIntercomIssueRequest(f.apiURL("/intercom"), request)
 	if err != nil {
-		// For now not using fmt.Errorf with %w for compatibility with go <1.13
-		return nil, errors.Wrap(err, "could not create multipart request")
+		return nil, fmt.Errorf("could not create multipart request: %w", err)
 	}
 
 	resp, err := f.http.Do(multipartReq)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed request to feedback service")
+		return nil, fmt.Errorf("failed request to feedback service: %w", err)
 	}
 	return parseCreateIntercomIssueResult(resp)
 }
@@ -76,17 +73,17 @@ func (f *FeedbackAPI) CreateIntercomIssue(request CreateIntercomIssueRequest) (r
 func newCreateGithubIssueRequest(uri string, req CreateGithubIssueRequest) (multipartReq *http.Request, err error) {
 	fileContent, err := ioutil.ReadFile(req.Filepath)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not read input file")
+		return nil, fmt.Errorf("could not read input file: %w", err)
 	}
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("file", req.Filepath)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not add file to request")
+		return nil, fmt.Errorf("could not add file to request: %w", err)
 	}
 	_, err = part.Write(fileContent)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not write file part")
+		return nil, fmt.Errorf("could not write file part: %w", err)
 	}
 
 	_ = writer.WriteField("userId", req.UserId)
@@ -96,7 +93,7 @@ func newCreateGithubIssueRequest(uri string, req CreateGithubIssueRequest) (mult
 
 	request, err := http.NewRequest("POST", uri, body)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create request")
+		return nil, fmt.Errorf("could not create request: %w", err)
 	}
 
 	request.Header.Set("Content-Type", writer.FormDataContentType())
@@ -106,17 +103,17 @@ func newCreateGithubIssueRequest(uri string, req CreateGithubIssueRequest) (mult
 func newCreateIntercomIssueRequest(uri string, req CreateIntercomIssueRequest) (multipartReq *http.Request, err error) {
 	fileContent, err := ioutil.ReadFile(req.Filepath)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not read input file")
+		return nil, fmt.Errorf("could not read input file: %w", err)
 	}
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("file", req.Filepath)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not add file to request")
+		return nil, fmt.Errorf("could not add file to request: %w", err)
 	}
 	_, err = part.Write(fileContent)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not write file part")
+		return nil, fmt.Errorf("could not write file part: %w", err)
 	}
 
 	_ = writer.WriteField("userId", req.UserId)
@@ -131,7 +128,7 @@ func newCreateIntercomIssueRequest(uri string, req CreateIntercomIssueRequest) (
 
 	request, err := http.NewRequest("POST", uri, body)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create request")
+		return nil, fmt.Errorf("could not create request: %w", err)
 	}
 
 	request.Header.Set("Content-Type", writer.FormDataContentType())
@@ -221,8 +218,8 @@ func parseCreateIntercomIssueResult(httpRes *http.Response) (*CreateIntercomIssu
 		res.Errors = &ErrorResponse{[]Error{}}
 		err = json.Unmarshal(resJSON, res.Errors)
 		if err != nil {
-			res.Errors = singleErrorResponse("could not parse feedback response: " + err.Error())
-			return res, err
+			res.Errors = singleErrorResponse("could not parse feedback response: " + err.Error() + ". Response was: " + string(resJSON))
+			return res, fmt.Errorf("parsing \"%s\" failed: %w", string(resJSON), err)
 		}
 	} else {
 		res.Success = true

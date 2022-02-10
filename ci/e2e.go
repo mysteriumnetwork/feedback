@@ -18,20 +18,21 @@ func E2E() error {
 	}
 	defer teardownCompose()
 
-	//wait for startup
-	time.Sleep(time.Second * 2)
+	// wait for startup
+	// TODO: ping s3-mock and wiremock and await startup, it is very slow in the pipeline
+	time.Sleep(time.Second * 10)
 
 	logLevel := seelog.DebugStr
-	skipFileUpload := true
 	requestsPerSecond := 9999999999.0
+	logProxyBaseUrl := "http://someweb.com"
 	gparams := params.Generic{
 		LogLevelFlag:      &logLevel,
-		SkipFileUpload:    &skipFileUpload,
 		RequestsPerSecond: &requestsPerSecond,
+		LogProxyBaseUrl:   &logProxyBaseUrl,
 	}
 
-	envAWSEndpointURL := "http://localhost:8090"
-	envAWSBucket := "random-bucket"
+	envAWSEndpointURL := "http://localhost:9090"
+	envAWSBucket := "node-user-reports"
 	envGithubAccessToken := "github-token"
 	envGithubOwner := "github-owner"
 	envGithubRepository := "github-repo"
