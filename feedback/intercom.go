@@ -126,7 +126,7 @@ func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string,
 			},
 		})
 		if err != nil {
-			log.Warn().Msgf("could not update visitor %s\n", report.UserId)
+			log.Warn().Msgf("could not update visitor %s", report.UserId)
 		}
 		visitorUpdated := (err == nil)
 
@@ -134,11 +134,12 @@ func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string,
 		contactUpdated := false
 		if !visitorUpdated {
 			contact, err := rep.client.Contacts.FindByUserID(report.UserId)
-			if err != nil {
-				log.Warn().Msgf("could not update contact %s\n", report.UserId)
-			}
-			if err == nil {
-				contact.Email = report.Email
+			if err != nil || contact.UserID == "" {
+				log.Warn().Msgf("could not find contact %s", report.UserId)
+			} else {
+				if report.Email != "" {
+					contact.Email = report.Email
+				}
 				contact.CustomAttributes = map[string]interface{}{
 					NODE_IDENTITY_KEY: report.NodeIdentity,
 					USER_ROLE_KEY:     report.UserType,
@@ -158,10 +159,11 @@ func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string,
 		if !visitorUpdated && !contactUpdated {
 			user, err := rep.client.Users.FindByUserID(report.UserId)
 			if err != nil {
-				log.Warn().Msgf("could not update user %s\n", report.UserId)
-			}
-			if err == nil {
-				user.Email = report.Email
+				log.Warn().Msgf("could not update user %s", report.UserId)
+			} else {
+				if report.Email != "" {
+					user.Email = report.Email
+				}
 				user.CustomAttributes = map[string]interface{}{
 					NODE_IDENTITY_KEY: report.NodeIdentity,
 					USER_ROLE_KEY:     report.UserType,
