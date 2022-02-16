@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"path"
 	"strings"
@@ -148,7 +149,7 @@ func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string,
 					},
 				})
 				if err != nil {
-					log.Warn().Msgf("could not update contact without using library %s", report.UserId)
+					log.Warn().Msgf("could not update contact (%s) without using library: %w", report.UserId, err)
 				}
 				contactUpdated = (err == nil)
 			} else {
@@ -284,7 +285,7 @@ func (rep *IntercomReporter) updateContact(userId string, updateContactRequest *
 	if err != nil {
 		return fmt.Errorf("marshal updateContactRequest failed: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodGet, rep.intercomBaseURL+"/contacts?user_id="+userId, bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPut, rep.intercomBaseURL+"/contacts?user_id="+userId, bytes.NewBuffer(data))
 	if err != nil {
 		return fmt.Errorf("creating update contact request failed: %w", err)
 	}
@@ -296,7 +297,11 @@ func (rep *IntercomReporter) updateContact(userId string, updateContactRequest *
 		return fmt.Errorf("updating contact http request failed: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("updating contact failed with code (%d): %w", resp.StatusCode, err)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err == nil {
+			log.Warn().Msgf("call to %s failed and returned %s", rep.intercomBaseURL+"/contacts?user_id="+userId, string(body))
+		}
+		return fmt.Errorf("updating contact failed with code %d: %w", resp.StatusCode, err)
 	}
 	return nil
 }
