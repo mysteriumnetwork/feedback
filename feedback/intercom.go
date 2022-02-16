@@ -115,7 +115,7 @@ func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string,
 
 	if report.UserId != "" {
 		// try update visitor (will become lead)
-		err = rep.updateVisitor(report.UserId, &updateVisitorRequest{
+		err = rep.updateVisitor(report.UserId, &updateRequest{
 			Email: report.Email,
 			CustomAttributes: updateVisitorRequestCustomAttributes{
 				NodeIdentity: report.NodeIdentity,
@@ -134,8 +134,23 @@ func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string,
 		contactUpdated := false
 		if !visitorUpdated {
 			contact, err := rep.client.Contacts.FindByUserID(report.UserId)
-			if err != nil || contact.UserID == "" {
+			if err != nil {
 				log.Warn().Msgf("could not find contact %s", report.UserId)
+			} else if contact.UserID == "" {
+				err = rep.updateContact(report.UserId, &updateRequest{
+					Email: report.Email,
+					CustomAttributes: updateVisitorRequestCustomAttributes{
+						NodeIdentity: report.NodeIdentity,
+						UserRole:     report.UserType,
+						NodeCountry:  report.NodeCountry,
+						IpType:       report.IpType,
+						Ip:           report.Ip,
+					},
+				})
+				if err != nil {
+					log.Warn().Msgf("could not update contact without using library %s", report.UserId)
+				}
+				contactUpdated = (err == nil)
 			} else {
 				if report.Email != "" {
 					contact.Email = report.Email
@@ -151,7 +166,7 @@ func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string,
 				if err != nil {
 					return "", fmt.Errorf("could not update contact (%v): %w", contact, err)
 				}
-				contactUpdated = true
+				contactUpdated = (err == nil)
 			}
 		}
 		// try update user
@@ -175,12 +190,12 @@ func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string,
 				if err != nil {
 					return "", fmt.Errorf("saving user failed (%s): %w", user.ID, err)
 				}
-				userUpdated = true
+				userUpdated = (err == nil)
 			}
 		}
 
 		if !visitorUpdated && !contactUpdated && !userUpdated {
-			return "", fmt.Errorf("could not update visitor, contact or user (%s): %w", report.UserId, err)
+			log.Error().Msgf("could not update visitor, contact or user (%s): %w", report.UserId, err)
 		}
 
 		userType := CONTACT_TYPE
@@ -236,13 +251,13 @@ type updateVisitorRequestCustomAttributes struct {
 	Ip           string `json:"ip"`
 }
 
-type updateVisitorRequest struct {
+type updateRequest struct {
 	Email            string                               `json:"email"`
 	CustomAttributes updateVisitorRequestCustomAttributes `json:"custom_attributes"`
 }
 
 //updates visitor so it becomes a lead
-func (rep *IntercomReporter) updateVisitor(userId string, updateVisitorRequest *updateVisitorRequest) error {
+func (rep *IntercomReporter) updateVisitor(userId string, updateVisitorRequest *updateRequest) error {
 	data, err := json.Marshal(updateVisitorRequest)
 	if err != nil {
 		return fmt.Errorf("marshal updateVisitorRequest failed: %w", err)
@@ -260,6 +275,28 @@ func (rep *IntercomReporter) updateVisitor(userId string, updateVisitorRequest *
 	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("updateVisitor http request failed with code (%d): %w", resp.StatusCode, err)
+	}
+	return nil
+}
+
+func (rep *IntercomReporter) updateContact(userId string, updateContactRequest *updateRequest) error {
+	data, err := json.Marshal(updateContactRequest)
+	if err != nil {
+		return fmt.Errorf("marshal updateContactRequest failed: %w", err)
+	}
+	req, err := http.NewRequest(http.MethodGet, rep.intercomBaseURL+"/contacts?user_id="+userId, bytes.NewBuffer(data))
+	if err != nil {
+		return fmt.Errorf("creating update contact request failed: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+rep.client.AppID)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := rep.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("updating contact http request failed: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("updating contact failed with code (%d): %w", resp.StatusCode, err)
 	}
 	return nil
 }
