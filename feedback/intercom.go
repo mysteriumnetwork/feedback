@@ -149,7 +149,7 @@ func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string,
 					},
 				})
 				if err != nil {
-					log.Warn().Msgf("could not update contact (%s) without using library: %w", report.UserId, err)
+					log.Warn().AnErr("err", err).Msgf("could not update contact (%s) without using library", report.UserId)
 				}
 				contactUpdated = (err == nil)
 			} else {
@@ -196,7 +196,7 @@ func (rep *IntercomReporter) ReportIssue(report *Report) (conversationId string,
 		}
 
 		if !visitorUpdated && !contactUpdated && !userUpdated {
-			log.Error().Msgf("could not update visitor, contact or user (%s): %w", report.UserId, err)
+			log.Err(err).Msgf("could not update visitor, contact or user with user id: %s", report.UserId)
 		}
 
 		userType := CONTACT_TYPE

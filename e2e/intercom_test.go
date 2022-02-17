@@ -177,6 +177,14 @@ func TestIntercomReporting(t *testing.T) {
 				200,
 			))
 		assert.Nil(t, err)
+		err = wiremockClient.StubFor(wiremock.Post(wiremock.URLPathMatching("/conversations")).
+			WithBodyPattern(wiremock.MatchingJsonPath("$.from[?(@.user_id == '"+userId+"')]")).
+			WillReturn(
+				`{}`,
+				map[string]string{"Content-Type": "application/json"},
+				404,
+			))
+		assert.Nil(t, err)
 
 		req := &client.CreateIntercomIssueRequest{
 			UserId:       userId,
