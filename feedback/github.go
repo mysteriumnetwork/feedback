@@ -93,7 +93,7 @@ func (rep *GithubReporter) ReportIssue(report *Report) (issueId string, err erro
 	}{
 		Description:     report.Description,
 		Email:           report.Email,
-		Identity:        report.UserId,
+		Identity:        report.NodeIdentity,
 		Timestamp:       time.Now().String(),
 		LogKey:          key,
 		LogProxyBaseUrl: rep.logProxyBaseUrl,

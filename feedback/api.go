@@ -167,10 +167,10 @@ func (e *Endpoint) CreateGithubIssue(c *gin.Context) {
 	}
 
 	report := &Report{
-		UserId:      form.UserId,
-		Description: form.Description,
-		Email:       form.Email,
-		LogURL:      *logURL,
+		NodeIdentity: form.UserId,
+		Description:  form.Description,
+		Email:        form.Email,
+		LogURL:       *logURL,
 	}
 
 	issueId, err := e.githubReporter.ReportIssue(report)
@@ -347,12 +347,20 @@ func (e *Endpoint) CreateIntercomIssue(c *gin.Context) {
 	conversationId, err := e.intercomReporter.ReportIssue(report)
 	if err != nil {
 		apiError := apierror.New("could not create intercom conversation", err)
-		_ = log.Error(apiError.Wrapped())
+		log.Error(apiError.Wrapped())
 		c.JSON(http.StatusServiceUnavailable, apiError.ToResponse())
 		return
 	}
-
 	log.Infof("Created intercom conversation from request %+v", form)
+
+	_, err = e.githubReporter.ReportIssue(report)
+	if err != nil {
+		apiError := apierror.New("could not report issue to github", err)
+		log.Error(apiError.Wrapped())
+		//this is added for conveniance for the support team, we will not alert users
+		//that it failed as intercom report was successful
+	}
+
 	c.JSON(http.StatusOK, &CreateIntercomIssueResponse{
 		ConversationId: conversationId,
 	})
