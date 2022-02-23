@@ -105,7 +105,7 @@ func (rep *GithubReporter) ReportIssue(report *Report) (issueId string, err erro
 	}
 
 	req := github.IssueRequest{
-		Title: github.String("User report: " + report.UserId),
+		Title: github.String("User report: " + report.NodeIdentity),
 		Body:  github.String(body.String()),
 	}
 	issue, _, err := rep.client.Issues.Create(context.Background(), rep.owner, rep.repository, &req)
