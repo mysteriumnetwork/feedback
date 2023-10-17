@@ -19,7 +19,7 @@ import (
 // Build builds the service
 func Build() error {
 	if os.Getenv("GITHUB_CI") == "" {
-		mg.Deps(ci.Swag)
+		mg.Deps(Swag)
 		mg.Deps(Generate)
 	} else {
 		fmt.Println("Skipping swagger generation in CI environment")
