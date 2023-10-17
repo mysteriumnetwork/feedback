@@ -2,23 +2,21 @@ package params
 
 import (
 	"flag"
-	"fmt"
-	"strings"
 
-	"github.com/cihub/seelog"
-	"github.com/mysteriumnetwork/feedback/infra"
+	"github.com/rs/zerolog"
 )
 
 // Generic represents all the generic parameters
 type Generic struct {
-	LogLevelFlag      *string
-	RequestsPerSecond *float64
-	LogProxyBaseUrl   *string
+	LogLevelFlag          *string
+	RequestsPerSecond     *float64
+	LogProxyBaseUrl       *string
+	GithubBaseUrlOverride *string
 }
 
 // Init initialized the generic parameters with flags
 func (f *Generic) Init() {
-	f.LogLevelFlag = flag.String("log-level", seelog.DebugStr, fmt.Sprintf("Service logging level (%s)", strings.Join(infra.AllLevels, "|")))
+	f.LogLevelFlag = flag.String("log-level", zerolog.DebugLevel.String(), "Service logging level")
 	f.RequestsPerSecond = flag.Float64("requestsPerSecond", 0.0166, "Maximum number of requests per second (default: 1 per minute)")
 	f.LogProxyBaseUrl = flag.String("logProxyBaseUrl", "https://mystnodes.com/support/logs", "A url which serves as proxy for accessing logs easily by support.")
 }

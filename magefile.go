@@ -4,44 +4,50 @@
 package main
 
 import (
-	"github.com/fatih/color"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 	"github.com/mysteriumnetwork/feedback/ci"
 	"github.com/mysteriumnetwork/go-ci/commands"
 	"github.com/mysteriumnetwork/go-ci/shell"
-	"strings"
+	"github.com/mysteriumnetwork/go-ci/util"
 )
 
 // Build builds the service
 func Build() error {
+	if os.Getenv("GITHUB_CI") == "" {
+		mg.Deps(Swag)
+		mg.Deps(Generate)
+	} else {
+		fmt.Println("Skipping swagger generation in CI environment")
+	}
+
 	return shell.NewCmd("go build -o ./build/feedback ./cmd/main.go").Run()
 }
 
-// Regen re-generates API schema (swagger.json) and related bindata files
-func Regen() error {
-	color.Cyan("Installing stuff")
-	err := shell.NewCmd("go get -u github.com/go-swagger/go-swagger/...").Run()
-	if err != nil {
-		return err
-	}
-	color.Cyan("Generating swagger.json")
-	err = shell.NewCmd("swagger generate spec --scan-models --output=./docs/swagger.json").Run()
-	if err != nil {
-		return err
-	}
-	color.Cyan("Generating assets for serving swagger.json")
-	return shell.NewCmd("go generate ./...").Run()
+// Installs the swag generation tool
+func swagInstall() error {
+	return sh.RunV("go", "install", "github.com/swaggo/swag/cmd/swag@v1.16.2")
 }
 
-// Validate validates API schema (swagger.json)
-func Validate() error {
-	color.Cyan("Installing stuff")
-	err := shell.NewCmd("go get -u github.com/go-swagger/go-swagger/...").Run()
+// Swag generates the swagger documents
+func Swag() error {
+	mg.Deps(swagInstall)
+	swag, err := util.GetGoBinaryPath("swag")
 	if err != nil {
 		return err
 	}
-	color.Cyan("Validating swagger.json")
-	return shell.NewCmd("swagger validate ./docs/swagger.json").Run()
+
+	return sh.RunV(
+		swag, "init",
+		"--generalInfo", "./cmd/main.go",
+		"--output", "./docs",
+		"--parseDependency",
+		"--parseDepth", "1",
+	)
 }
 
 // Test runs unit tests
@@ -109,4 +115,9 @@ func Run() error {
 // E2E runs the e2e test suite
 func E2E() error {
 	return ci.E2E()
+}
+
+// Generate runs go generate
+func Generate() error {
+	return sh.RunV("go", "generate", "./...")
 }

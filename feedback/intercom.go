@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"path"
 	"strings"
@@ -88,9 +88,7 @@ Description:
 
 {{.Description}}
 
-Logs:
-
-{{.LogProxyBaseUrl}}/{{.LogKey}}
+Logs: {{.LogProxyBaseUrl}}/{{.LogKey}}
 
 `
 
@@ -257,7 +255,7 @@ type updateRequest struct {
 	CustomAttributes updateVisitorRequestCustomAttributes `json:"custom_attributes"`
 }
 
-//updates visitor so it becomes a lead
+// updates visitor so it becomes a lead
 func (rep *IntercomReporter) updateVisitor(userId string, updateVisitorRequest *updateRequest) error {
 	data, err := json.Marshal(updateVisitorRequest)
 	if err != nil {
@@ -297,7 +295,7 @@ func (rep *IntercomReporter) updateContact(userId string, updateContactRequest *
 		return fmt.Errorf("updating contact http request failed: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err == nil {
 			log.Warn().Msgf("call to %s failed and returned %s", rep.intercomBaseURL+"/contacts?user_id="+userId, string(body))
 		}
@@ -348,4 +346,26 @@ func (rep *IntercomReporter) createConversation(createConversationRequest *creat
 		return "", fmt.Errorf("createConversationResponse parsing failed: %w", err)
 	}
 	return result.Id, nil
+}
+
+func (rep *IntercomReporter) GetBugReportMessage(report *Report) (message string, err error) {
+	key := path.Base(report.LogURL.String())
+	templateOpts := struct {
+		Description,
+		Timestamp,
+		LogKey,
+		LogProxyBaseUrl string
+	}{
+		Description:     report.Description,
+		Timestamp:       time.Now().Format("2006-01-02 15:04:05"),
+		LogKey:          key,
+		LogProxyBaseUrl: rep.logProxyBaseUrl,
+	}
+	var body bytes.Buffer
+	err = rep.messageTemplate.Execute(&body, templateOpts)
+	if err != nil {
+		return "", fmt.Errorf("could not generate message body with report (%+v): %w", templateOpts, err)
+	}
+
+	return body.String(), nil
 }

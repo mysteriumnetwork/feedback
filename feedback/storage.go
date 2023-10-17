@@ -18,6 +18,7 @@
 package feedback
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -25,16 +26,16 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/s3manager"
 	"github.com/gofrs/uuid"
+	"github.com/mysteriumnetwork/feedback/constants"
 )
 
 // Storage file storage
 type Storage struct {
-	uploader *s3manager.Uploader
+	uploader *manager.Uploader
 	bucket   string
 }
 
@@ -46,21 +47,22 @@ type NewStorageOpts struct {
 
 // New creates a new Storage
 func New(opts *NewStorageOpts) (storage *Storage, err error) {
-	cfg, err := external.LoadDefaultAWSConfig()
+	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("could not load AWS configuration: %w", err)
 	}
-	cfg.EndpointResolver = aws.ResolveWithEndpointURL(opts.EndpointURL)
-	cfg.Region = endpoints.EuCentral1RegionID
-	s3client := s3.New(cfg)
-	s3client.ForcePathStyle = true
+	s3client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(opts.EndpointURL)
+		o.Region = constants.EuCentral1RegionID
+		o.UsePathStyle = true
+	})
 
-	s3uploader := &s3manager.Uploader{
+	s3uploader := &manager.Uploader{
 		S3:                s3client,
-		PartSize:          s3manager.DefaultUploadPartSize,
-		Concurrency:       s3manager.DefaultUploadConcurrency,
+		PartSize:          manager.DefaultUploadPartSize,
+		Concurrency:       manager.DefaultUploadConcurrency,
 		LeavePartsOnError: false,
-		MaxUploadParts:    s3manager.MaxUploadParts,
+		MaxUploadParts:    manager.MaxUploadParts,
 	}
 
 	return &Storage{
@@ -81,7 +83,7 @@ func (s *Storage) Upload(filepath string) (url *url.URL, err error) {
 		return nil, fmt.Errorf("could not generate remote key for upload: %w", err)
 	}
 
-	result, err := s.uploader.Upload(&s3manager.UploadInput{
+	result, err := s.uploader.Upload(context.Background(), &s3.PutObjectInput{
 		Body:   file,
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(fileKey),

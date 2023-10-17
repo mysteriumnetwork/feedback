@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 	"path"
 	"strconv"
 	"strings"
@@ -42,19 +43,27 @@ type GithubReporter struct {
 
 // NewGithubReporterOpts GithubReporter initialization options
 type NewGithubReporterOpts struct {
-	Token           string
-	Owner           string
-	Repository      string
-	LogProxyBaseUrl string
+	GithubBaseUrlOverride *string
+	Token                 string
+	Owner                 string
+	Repository            string
+	LogProxyBaseUrl       string
 }
 
 // NewGithubReporter creates a new GithubReporter
-func NewGithubReporter(opts *NewGithubReporterOpts) *GithubReporter {
+func NewGithubReporter(opts *NewGithubReporterOpts) (*GithubReporter, error) {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: opts.Token},
 	)
 	oauthClient := oauth2.NewClient(context.Background(), ts)
 	githubClient := github.NewClient(oauthClient)
+	if opts.GithubBaseUrlOverride != nil {
+		var err error
+		githubClient.BaseURL, err = url.Parse(*opts.GithubBaseUrlOverride)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse github base url: %w", err)
+		}
+	}
 	issueTemplate := template.Must(template.New("issueTemplate").Parse(issueTemplate))
 	return &GithubReporter{
 		client:          githubClient,
@@ -62,7 +71,7 @@ func NewGithubReporter(opts *NewGithubReporterOpts) *GithubReporter {
 		repository:      opts.Repository,
 		issueTemplate:   issueTemplate,
 		logProxyBaseUrl: strings.TrimSuffix(opts.LogProxyBaseUrl, "/"),
-	}
+	}, nil
 }
 
 const issueTemplate = `
@@ -94,7 +103,7 @@ func (rep *GithubReporter) ReportIssue(report *Report) (issueId string, err erro
 		Description:     report.Description,
 		Email:           report.Email,
 		Identity:        report.NodeIdentity,
-		Timestamp:       time.Now().String(),
+		Timestamp:       time.Now().Format("2006-01-02 15:04:05"),
 		LogKey:          key,
 		LogProxyBaseUrl: rep.logProxyBaseUrl,
 	}
@@ -109,7 +118,6 @@ func (rep *GithubReporter) ReportIssue(report *Report) (issueId string, err erro
 		Body:  github.String(body.String()),
 	}
 	issue, _, err := rep.client.Issues.Create(context.Background(), rep.owner, rep.repository, &req)
-
 	if err != nil {
 		return "", fmt.Errorf("could not create github issue: %w", err)
 	}

@@ -1,0 +1,173 @@
+basePath: /api
+definitions:
+  apierror.APIError:
+    properties:
+      message:
+        type: string
+    type: object
+  apierror.APIErrorResponse:
+    properties:
+      errors:
+        items:
+          $ref: '#/definitions/apierror.APIError'
+        type: array
+    type: object
+  feedback.CreateBugReportResponse:
+    properties:
+      email:
+        type: string
+      issueId:
+        type: string
+      message:
+        type: string
+      node_identity:
+        type: string
+    type: object
+  feedback.CreateIntercomIssueResponse:
+    properties:
+      conversationId:
+        type: string
+    type: object
+  infra.Ping:
+    properties:
+      message:
+        description: 'example: pong'
+        type: string
+    type: object
+  multipart.FileHeader:
+    properties:
+      filename:
+        type: string
+      header:
+        $ref: '#/definitions/textproto.MIMEHeader'
+      size:
+        type: integer
+    type: object
+  textproto.MIMEHeader:
+    additionalProperties:
+      items:
+        type: string
+      type: array
+    type: object
+info:
+  contact:
+    name: API Support
+    url: https://github.com/mysteriumnetwork/feedback/issues
+  description: This is a service dedicated to collecting feedback from Mysterium Network
+    users
+  termsOfService: https://docs.mysterium.network/en/latest/about/terms-and-conditions/
+  title: Feedback
+  version: "1.0"
+paths:
+  /v1/bug-report:
+    post:
+      parameters:
+      - in: formData
+        minLength: 30
+        name: description
+        required: true
+        type: string
+      - in: formData
+        name: email
+        required: true
+        type: string
+      - example: 0xF0345F6251Bef9447A08766b9DA2B07b28aD80B0
+        in: formData
+        name: nodeIdentity
+        required: true
+        type: string
+      - description: log file
+        in: formData
+        name: file
+        required: true
+        type: file
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feedback.CreateBugReportResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.APIErrorResponse'
+        "429":
+          description: Too Many Requests
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.APIErrorResponse'
+      summary: create a new bug report
+      tags:
+      - bug-report
+  /v1/intercom:
+    post:
+      deprecated: true
+      parameters:
+      - in: formData
+        minLength: 30
+        name: description
+        required: true
+        type: string
+      - in: formData
+        name: email
+        required: true
+        type: string
+      - in: formData
+        name: ip
+        type: string
+      - in: formData
+        name: ipType
+        type: string
+      - in: formData
+        name: nodeCountry
+        type: string
+      - in: formData
+        name: nodeIdentity
+        required: true
+        type: string
+      - in: formData
+        name: userId
+        type: string
+      - in: formData
+        name: userType
+        type: string
+      - description: log file
+        in: formData
+        name: file
+        required: true
+        type: file
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feedback.CreateIntercomIssueResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.APIErrorResponse'
+        "429":
+          description: Too Many Requests
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.APIErrorResponse'
+      summary: create a new bug in intercom
+      tags:
+      - bug-report
+  /v1/ping:
+    get:
+      consumes:
+      - application/json
+      description: Endpoint is meant to check service health and returns pong response
+        for every request
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/infra.Ping'
+      summary: Check service health
+      tags:
+      - health
+swagger: "2.0"

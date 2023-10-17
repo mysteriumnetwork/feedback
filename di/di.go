@@ -1,14 +1,14 @@
 package di
 
 import (
+	"fmt"
 	"sync"
 
-	log "github.com/cihub/seelog"
-	"github.com/mysteriumnetwork/feedback/docs"
 	"github.com/mysteriumnetwork/feedback/feedback"
 	"github.com/mysteriumnetwork/feedback/infra"
 	"github.com/mysteriumnetwork/feedback/params"
 	"github.com/mysteriumnetwork/feedback/server"
+	"github.com/rs/zerolog/log"
 )
 
 // Container represents our dependency container
@@ -27,16 +27,20 @@ func (c *Container) ConstructServer(gparams params.Generic, eparams params.Envir
 		Bucket:      *eparams.EnvAWSBucket,
 	})
 	if err != nil {
-		_ = log.Critical("Failed to initialize storage: ", err)
+		log.Fatal().Err(err).Msg("Failed to initialize storage")
 		return nil, err
 	}
 
-	githubReporter := feedback.NewGithubReporter(&feedback.NewGithubReporterOpts{
-		Token:           *eparams.EnvGithubAccessToken,
-		Owner:           *eparams.EnvGithubOwner,
-		Repository:      *eparams.EnvGithubRepository,
-		LogProxyBaseUrl: *gparams.LogProxyBaseUrl,
+	githubReporter, err := feedback.NewGithubReporter(&feedback.NewGithubReporterOpts{
+		Token:                 *eparams.EnvGithubAccessToken,
+		Owner:                 *eparams.EnvGithubOwner,
+		Repository:            *eparams.EnvGithubRepository,
+		LogProxyBaseUrl:       *gparams.LogProxyBaseUrl,
+		GithubBaseUrlOverride: gparams.GithubBaseUrlOverride,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("could not initialize github reporter: %w", err)
+	}
 	rateLimiter := infra.NewRateLimiter(*gparams.RequestsPerSecond)
 
 	intercomReporter := feedback.NewIntercomReporter(&feedback.NewIntercomReporterOpts{
@@ -48,7 +52,6 @@ func (c *Container) ConstructServer(gparams params.Generic, eparams params.Envir
 	srvr := server.New(
 		feedback.NewEndpoint(githubReporter, intercomReporter, storage, rateLimiter),
 		infra.NewPingEndpoint(),
-		docs.NewEndpoint(),
 	)
 
 	return srvr, nil
