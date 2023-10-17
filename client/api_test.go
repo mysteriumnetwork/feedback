@@ -1,23 +1,24 @@
-package feedback
+package client
 
 import (
 	"net/url"
+	"os"
 	"testing"
 
-	"github.com/mysteriumnetwork/feedback/client"
-	"github.com/mysteriumnetwork/feedback/e2e"
+	"github.com/mysteriumnetwork/feedback/feedback"
 	"github.com/mysteriumnetwork/feedback/infra"
 	"github.com/mysteriumnetwork/feedback/server"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockReporter struct{}
 
-func (m *mockReporter) ReportIssue(report *Report) (issueId string, err error) {
+func (m *mockReporter) ReportIssue(report *feedback.Report) (issueId string, err error) {
 	return "12", nil
 }
 
-func (m *mockReporter) GetBugReportMessage(report *Report) (message string, err error) {
+func (m *mockReporter) GetBugReportMessage(report *feedback.Report) (message string, err error) {
 	return "test message 123", nil
 }
 
@@ -32,7 +33,7 @@ func (m *mockUploader) Upload(filepath string) (url *url.URL, err error) {
 }
 
 func TestApi(t *testing.T) {
-	endpoint := NewEndpoint(&mockReporter{}, &mockReporter{}, &mockUploader{}, infra.NewRateLimiter(99999))
+	endpoint := feedback.NewEndpoint(&mockReporter{}, &mockReporter{}, &mockUploader{}, infra.NewRateLimiter(99999))
 
 	srvr := server.New(
 		endpoint,
@@ -41,16 +42,15 @@ func TestApi(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		request       *client.CreateIntercomIssueRequest
+		request       *feedback.CreateIntercomIssueRequest
 		filename      string
 		fileContent   []byte
 		fails         bool
 		errorContains string
-		errorCode     int
 	}{
 		{
 			"description too short",
-			&client.CreateIntercomIssueRequest{
+			&feedback.CreateIntercomIssueRequest{
 				UserId:       "sdadas-424-dsfsd",
 				Description:  "too short",
 				NodeIdentity: "0x55345345345345345",
@@ -59,11 +59,10 @@ func TestApi(t *testing.T) {
 			[]byte("hello test file"),
 			true,
 			"too short",
-			400,
 		},
 		{
 			"empty identity",
-			&client.CreateIntercomIssueRequest{
+			&feedback.CreateIntercomIssueRequest{
 				UserId:       "sdadas-424-dsfsd",
 				Description:  "description which has enough length to be okay",
 				NodeIdentity: "",
@@ -72,11 +71,10 @@ func TestApi(t *testing.T) {
 			[]byte("hello test file"),
 			true,
 			"field is required: nodeIdentity",
-			400,
 		},
 		{
 			"no identity",
-			&client.CreateIntercomIssueRequest{
+			&feedback.CreateIntercomIssueRequest{
 				UserId:      "sdadas-424-dsfsd",
 				Description: "description which has enough length to be okay",
 			},
@@ -84,24 +82,10 @@ func TestApi(t *testing.T) {
 			[]byte("hello test file"),
 			true,
 			"field is required: nodeIdentity",
-			400,
-		},
-		{
-			"no file",
-			&client.CreateIntercomIssueRequest{
-				UserId:       "sdadas-424-dsfsd",
-				Description:  "description which has enough length to be okay",
-				NodeIdentity: "0x55345345345345345",
-			},
-			"filename1.txt",
-			[]byte{},
-			true,
-			"field is required: file",
-			400,
 		},
 		{
 			"no userid or email",
-			&client.CreateIntercomIssueRequest{
+			&feedback.CreateIntercomIssueRequest{
 				Description:  "description which has enough length to be okay",
 				NodeIdentity: "0x55345345345345345",
 			},
@@ -109,11 +93,10 @@ func TestApi(t *testing.T) {
 			[]byte("hello test file"),
 			true,
 			"field is required: email or userId",
-			400,
 		},
 		{
 			"userid",
-			&client.CreateIntercomIssueRequest{
+			&feedback.CreateIntercomIssueRequest{
 				UserId:       "sdadas-424-dsfsd",
 				Description:  "description which has enough length to be okay",
 				NodeIdentity: "0x55345345345345345",
@@ -122,11 +105,10 @@ func TestApi(t *testing.T) {
 			[]byte("hello test file"),
 			false,
 			"",
-			0,
 		},
 		{
 			"email",
-			&client.CreateIntercomIssueRequest{
+			&feedback.CreateIntercomIssueRequest{
 				Email:        "dfsfsdf@gmail.com",
 				Description:  "description which has enough length to be okay",
 				NodeIdentity: "0x55345345345345345",
@@ -135,20 +117,29 @@ func TestApi(t *testing.T) {
 			[]byte("hello test file"),
 			false,
 			"",
-			0,
 		},
 	}
 	for _, test := range tests {
+		apiClient, err := NewFeedbackAPI("http://localhost:8080")
+		require.NoError(t, err)
 		t.Run(test.name, func(t *testing.T) {
-			err := e2e.SendReportIntercomIssueRequest(t, test.request, test.filename, test.fileContent)
+			f, err := os.CreateTemp("", test.filename)
+			require.NoError(t, err)
+			defer os.Remove(f.Name())
+
+			_, err = f.Write(test.fileContent)
+			require.NoError(t, err)
+
+			resp, apierr, err := apiClient.CreateIntercomIssue(*test.request, f.Name())
 			if test.fails {
-				assert.NotNil(t, err)
-				assert.Equal(t, 400, err.Code)
-				assert.Contains(t, err.Errors[0].Message, test.errorContains)
+				assert.NotNil(t, apierr)
+				assert.Nil(t, err)
+				assert.Contains(t, apierr.Errors[0].Message, test.errorContains)
 			} else {
+				assert.NotNil(t, resp)
+				assert.Nil(t, apierr)
 				assert.Nil(t, err)
 			}
-
 		})
 	}
 }

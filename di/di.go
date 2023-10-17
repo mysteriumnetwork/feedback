@@ -1,6 +1,7 @@
 package di
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/mysteriumnetwork/feedback/feedback"
@@ -30,12 +31,16 @@ func (c *Container) ConstructServer(gparams params.Generic, eparams params.Envir
 		return nil, err
 	}
 
-	githubReporter := feedback.NewGithubReporter(&feedback.NewGithubReporterOpts{
-		Token:           *eparams.EnvGithubAccessToken,
-		Owner:           *eparams.EnvGithubOwner,
-		Repository:      *eparams.EnvGithubRepository,
-		LogProxyBaseUrl: *gparams.LogProxyBaseUrl,
+	githubReporter, err := feedback.NewGithubReporter(&feedback.NewGithubReporterOpts{
+		Token:                 *eparams.EnvGithubAccessToken,
+		Owner:                 *eparams.EnvGithubOwner,
+		Repository:            *eparams.EnvGithubRepository,
+		LogProxyBaseUrl:       *gparams.LogProxyBaseUrl,
+		GithubBaseUrlOverride: gparams.GithubBaseUrlOverride,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("could not initialize github reporter: %w", err)
+	}
 	rateLimiter := infra.NewRateLimiter(*gparams.RequestsPerSecond)
 
 	intercomReporter := feedback.NewIntercomReporter(&feedback.NewIntercomReporterOpts{

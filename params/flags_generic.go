@@ -8,9 +8,10 @@ import (
 
 // Generic represents all the generic parameters
 type Generic struct {
-	LogLevelFlag      *string
-	RequestsPerSecond *float64
-	LogProxyBaseUrl   *string
+	LogLevelFlag          *string
+	RequestsPerSecond     *float64
+	LogProxyBaseUrl       *string
+	GithubBaseUrlOverride *string
 }
 
 // Init initialized the generic parameters with flags

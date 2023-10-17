@@ -26,10 +26,12 @@ func E2E() error {
 	logLevel := zerolog.DebugLevel.String()
 	requestsPerSecond := 9999999999.0
 	logProxyBaseUrl := "http://someweb.com"
+	githubBaseUrlOverride := "http://localhost:8090/github/"
 	gparams := params.Generic{
-		LogLevelFlag:      &logLevel,
-		RequestsPerSecond: &requestsPerSecond,
-		LogProxyBaseUrl:   &logProxyBaseUrl,
+		LogLevelFlag:          &logLevel,
+		RequestsPerSecond:     &requestsPerSecond,
+		LogProxyBaseUrl:       &logProxyBaseUrl,
+		GithubBaseUrlOverride: &githubBaseUrlOverride,
 	}
 
 	envAWSEndpointURL := "http://localhost:9090"

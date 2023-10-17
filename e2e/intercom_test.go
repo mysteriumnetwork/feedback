@@ -1,10 +1,13 @@
 package e2e
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
-	"github.com/mysteriumnetwork/feedback/client"
+	"github.com/mysteriumnetwork/feedback/feedback"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/walkerus/go-wiremock"
 )
 
@@ -13,9 +16,12 @@ func TestIntercomReporting(t *testing.T) {
 	s3Downloader, err := newS3Downloader("node-user-reports")
 	assert.NoError(t, err)
 
+	if apiClient == nil {
+		t.Error("apiClient is nil")
+	}
+
 	t.Run("report an issue on intercom with userId (visitor)", func(t *testing.T) {
 		userId := "dfcte009-73cc-4638-be3d-f4tjd22a22a2"
-		filename := "file1.txt"
 		fileContent := []byte("hello")
 		defer wiremockClient.Reset()
 		err := wiremockClient.StubFor(wiremock.Get(wiremock.URLPathMatching("/visitors")).WithQueryParam("user_id", wiremock.EqualTo(userId)).WillReturn(
@@ -39,14 +45,25 @@ func TestIntercomReporting(t *testing.T) {
 			))
 		assert.Nil(t, err)
 
-		req := &client.CreateIntercomIssueRequest{
+		req := &feedback.CreateIntercomIssueRequest{
 			UserId:       userId,
 			NodeIdentity: "0x5345765675656",
 			Description:  "long description for an issue that I have in my node",
 		}
-		errResp := SendReportIntercomIssueRequest(t, req, filename, fileContent)
-		assert.Nil(t, errResp)
-		content, err := s3Downloader.getFileContent(t, filename)
+
+		f, err := os.CreateTemp("", "test_file")
+		require.NoError(t, err)
+		defer os.Remove(f.Name())
+
+		_, err = f.Write(fileContent)
+		require.NoError(t, err)
+
+		resp, apiErr, err := apiClient.CreateIntercomIssue(*req, f.Name())
+		assert.Nil(t, err)
+		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
+
+		content, err := s3Downloader.getFileContent(t, filepath.Base(f.Name()))
 		assert.NoError(t, err)
 		assert.Equal(t, fileContent, content)
 	})
@@ -54,7 +71,6 @@ func TestIntercomReporting(t *testing.T) {
 	t.Run("report an issue on intercom with userId (lead)", func(t *testing.T) {
 		userId := "dfyye009-73cc-4888-be3d-f4t6666662a2"
 		id := "61cd88818b3349339c44426c"
-		filename := "file2.txt"
 		fileContent := []byte("hello-2")
 		defer wiremockClient.Reset()
 		err := wiremockClient.StubFor(wiremock.Get(
@@ -85,13 +101,22 @@ func TestIntercomReporting(t *testing.T) {
 				))
 		assert.Nil(t, err)
 
-		req := &client.CreateIntercomIssueRequest{
+		req := &feedback.CreateIntercomIssueRequest{
 			UserId:       userId,
 			NodeIdentity: "0x5345765675656",
 			Description:  "long description for an issue that I have in my node",
 		}
-		errResp := SendReportIntercomIssueRequest(t, req, filename, fileContent)
-		assert.Nil(t, errResp)
+		f, err := os.CreateTemp("", "test_file")
+		require.NoError(t, err)
+		defer os.Remove(f.Name())
+
+		_, err = f.Write(fileContent)
+		require.NoError(t, err)
+
+		resp, apiErr, err := apiClient.CreateIntercomIssue(*req, f.Name())
+		assert.Nil(t, err)
+		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
 		count, err := wiremockClient.GetCountRequests(wiremock.Get(
 			wiremock.URLPathMatching("/contacts")).
 			WithQueryParam("user_id", wiremock.EqualTo(userId)).Request())
@@ -102,7 +127,7 @@ func TestIntercomReporting(t *testing.T) {
 				WithBodyPattern(wiremock.MatchingJsonPath("$[?(@.id == '" + id + "')]")).Request())
 		assert.Nil(t, err)
 		assert.Equal(t, 1, int(count))
-		content, err := s3Downloader.getFileContent(t, filename)
+		content, err := s3Downloader.getFileContent(t, filepath.Base(f.Name()))
 		assert.NoError(t, err)
 		assert.Equal(t, fileContent, content)
 	})
@@ -110,7 +135,6 @@ func TestIntercomReporting(t *testing.T) {
 	t.Run("report an issue on intercom with userId (user)", func(t *testing.T) {
 		userId := "d77709-73cc-4888-be3d-f4t6aaaa62a2"
 		id := "61cd8887777779339c44426c"
-		filename := "file3.txt"
 		fileContent := []byte("hello-3")
 		defer wiremockClient.Reset()
 		err := wiremockClient.StubFor(wiremock.Get(
@@ -140,13 +164,22 @@ func TestIntercomReporting(t *testing.T) {
 			))
 		assert.Nil(t, err)
 
-		req := &client.CreateIntercomIssueRequest{
+		req := &feedback.CreateIntercomIssueRequest{
 			UserId:       userId,
 			NodeIdentity: "0x5345765675656",
 			Description:  "long description for an issue that I have in my node",
 		}
-		errResp := SendReportIntercomIssueRequest(t, req, filename, fileContent)
-		assert.Nil(t, errResp)
+		f, err := os.CreateTemp("", "test_file")
+		require.NoError(t, err)
+		defer os.Remove(f.Name())
+
+		_, err = f.Write(fileContent)
+		require.NoError(t, err)
+
+		resp, apiErr, err := apiClient.CreateIntercomIssue(*req, f.Name())
+		assert.Nil(t, err)
+		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
 		count, err := wiremockClient.GetCountRequests(
 			wiremock.Get(wiremock.URLPathMatching("/users")).
 				WithQueryParam("user_id", wiremock.EqualTo(userId)).Request())
@@ -157,14 +190,13 @@ func TestIntercomReporting(t *testing.T) {
 			WithBodyPattern(wiremock.MatchingJsonPath("$[?(@.id == '" + id + "')]")).Request())
 		assert.Nil(t, err)
 		assert.Equal(t, 1, int(count))
-		content, err := s3Downloader.getFileContent(t, filename)
+		content, err := s3Downloader.getFileContent(t, filepath.Base(f.Name()))
 		assert.NoError(t, err)
 		assert.Equal(t, fileContent, content)
 	})
 
 	t.Run("user not found", func(t *testing.T) {
 		userId := "dfcte009-73cc-4638-be3d-f4tjd22a22a2"
-		filename := "file4.txt"
 		fileContent := []byte("hello-4")
 		defer wiremockClient.Reset()
 
@@ -186,20 +218,27 @@ func TestIntercomReporting(t *testing.T) {
 			))
 		assert.Nil(t, err)
 
-		req := &client.CreateIntercomIssueRequest{
+		req := &feedback.CreateIntercomIssueRequest{
 			UserId:       userId,
 			NodeIdentity: "0x5345765675656",
 			Description:  "long description for an issue that I have in my node",
 		}
-		errResp := SendReportIntercomIssueRequest(t, req, filename, fileContent)
-		assert.NotNil(t, errResp)
-		assert.Equal(t, 503, errResp.Code)
-		assert.Contains(t, errResp.Errors[0].Message, "could not create intercom conversation")
+
+		f, err := os.CreateTemp("", "test_file")
+		require.NoError(t, err)
+		defer os.Remove(f.Name())
+
+		_, err = f.Write(fileContent)
+		require.NoError(t, err)
+
+		_, apiErr, err := apiClient.CreateIntercomIssue(*req, f.Name())
+		assert.Nil(t, err)
+		assert.NotNil(t, apiErr)
+		assert.Contains(t, apiErr.Errors[0].Message, "could not create intercom conversation")
 	})
 
 	t.Run("report an issue on intercom with email", func(t *testing.T) {
 		email := "email@something.com"
-		filename := "file5.txt"
 		fileContent := []byte("hello-5")
 		defer wiremockClient.Reset()
 		err := wiremockClient.StubFor(wiremock.Post(
@@ -221,14 +260,24 @@ func TestIntercomReporting(t *testing.T) {
 			))
 		assert.Nil(t, err)
 
-		req := &client.CreateIntercomIssueRequest{
+		req := &feedback.CreateIntercomIssueRequest{
 			Email:        email,
 			NodeIdentity: "0x5345765675656",
 			Description:  "long description for an issue that I have in my node",
 		}
-		errResp := SendReportIntercomIssueRequest(t, req, filename, fileContent)
-		assert.Nil(t, errResp)
-		content, err := s3Downloader.getFileContent(t, filename)
+
+		f, err := os.CreateTemp("", "test_file")
+		require.NoError(t, err)
+		defer os.Remove(f.Name())
+
+		_, err = f.Write(fileContent)
+		require.NoError(t, err)
+
+		resp, apiErr, err := apiClient.CreateIntercomIssue(*req, f.Name())
+		assert.Nil(t, err)
+		assert.Nil(t, apiErr)
+		assert.NotNil(t, resp)
+		content, err := s3Downloader.getFileContent(t, filepath.Base(f.Name()))
 		assert.NoError(t, err)
 		assert.Equal(t, fileContent, content)
 	})
