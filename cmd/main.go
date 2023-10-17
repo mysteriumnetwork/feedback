@@ -3,18 +3,18 @@
 // The purpose of this documentation is to provide developers an insight of how to
 // interact with Mysterium Feedback API
 //
-//     schemes: https
-//     host: localhost
-//     basepath: /api/v1
-//     license: GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+//	schemes: https
+//	host: localhost
+//	basepath: /api/v1
+//	license: GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
 //
-//     consumes:
-//       - application/json
+//	consumes:
+//	  - application/json
 //
-//     produces:
-//       - application/json
+//	produces:
+//	  - application/json
 //
-//     version: 0.0.1
+//	version: 0.0.1
 //
 // swagger:meta
 package main
@@ -24,18 +24,29 @@ import (
 	"flag"
 	"os"
 
-	log "github.com/cihub/seelog"
 	"github.com/mysteriumnetwork/feedback/constants"
 	"github.com/mysteriumnetwork/feedback/di"
-	"github.com/mysteriumnetwork/feedback/infra"
 	"github.com/mysteriumnetwork/feedback/params"
+	mlog "github.com/mysteriumnetwork/logger"
+	"github.com/rs/zerolog/log"
 )
 
+// @title Feedback
+// @version 1.0
+// @description This is a service dedicated to collecting feedback from Mysterium Network users
+// @termsOfService https://docs.mysterium.network/en/latest/about/terms-and-conditions/
+
+// @contact.name API Support
+// @contact.url https://github.com/mysteriumnetwork/feedback/issues
+
+// @BasePath /api
 func main() {
 	os.Exit(app())
 }
 
 func app() (retValue int) {
+	logger := mlog.BootstrapDefaultLogger()
+
 	gparams := params.Generic{}
 	gparams.Init()
 
@@ -48,7 +59,7 @@ func app() (retValue int) {
 		constants.EnvIntercomAccessToken,
 	)
 	if err != nil {
-		_ = log.Critical(err)
+		log.Fatal().Err(err).Msg("Failed to initialize environment")
 		return -1
 	}
 
@@ -56,13 +67,11 @@ func app() (retValue int) {
 	eparams.Init()
 
 	flag.Parse()
-	infra.ConfigureLogger(*gparams.LogLevelFlag)
-	infra.BootstrapLogger(infra.CurrentLogOptions)
+	mlog.SetLevel(logger, *gparams.LogLevelFlag)
 
-	log.Info("Starting feedback service")
+	log.Info().Msg("Starting feedback service")
 	defer func() {
-		log.Info("Stopping feedback service")
-		log.Flush()
+		log.Info().Msg("Stopping feedback service")
 	}()
 
 	container := &di.Container{}
@@ -70,13 +79,13 @@ func app() (retValue int) {
 
 	server, err := container.ConstructServer(gparams, eparams)
 	if err != nil {
-		_ = log.Critical("Error constructing API server: ", err)
+		log.Fatal().Err(err).Msg("Error constructing API server")
 		return -1
 	}
 
 	err = server.Serve()
 	if err != nil {
-		_ = log.Critical("Error running API server: ", err)
+		log.Fatal().Err(err).Msg("Error running API server")
 		return -1
 	}
 	return 0

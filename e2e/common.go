@@ -11,11 +11,11 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/s3manager"
 	"github.com/mysteriumnetwork/feedback/client"
+	"github.com/mysteriumnetwork/feedback/constants"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -81,21 +81,23 @@ func parseResp(t *testing.T, resp *http.Response, obj interface{}) *ErrorRespons
 }
 
 type s3Downloader struct {
-	downloader *s3manager.Downloader
+	downloader *manager.Downloader
 	client     *s3.Client
 	bucket     string
 }
 
 func newS3Downloader(bucket string) (*s3Downloader, error) {
-	cfg, err := external.LoadDefaultAWSConfig()
+	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("could not load AWS configuration: %w", err)
 	}
-	cfg.EndpointResolver = aws.ResolveWithEndpointURL("http://localhost:9090")
-	cfg.Region = endpoints.EuCentral1RegionID
-	s3client := s3.New(cfg)
-	s3client.ForcePathStyle = true
-	downloader := &s3manager.Downloader{
+
+	s3client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.UsePathStyle = true
+		o.BaseEndpoint = aws.String("http://localhost:9090")
+		o.Region = constants.EuCentral1RegionID
+	})
+	downloader := &manager.Downloader{
 		S3: s3client,
 	}
 	return &s3Downloader{
@@ -106,16 +108,17 @@ func newS3Downloader(bucket string) (*s3Downloader, error) {
 }
 
 func (s3d *s3Downloader) getFileContent(t *testing.T, filename string) ([]byte, error) {
-	paginator := s3.NewListObjectsV2Paginator(s3d.client.ListObjectsV2Request(&s3.ListObjectsV2Input{
+	paginator := s3.NewListObjectsV2Paginator(s3d.client, &s3.ListObjectsV2Input{
 		Bucket: &s3d.bucket,
-	}))
-	for paginator.Next(context.Background()) {
-		page := paginator.CurrentPage()
+	})
+	var page *s3.ListObjectsV2Output
+	var err error
+	for page, err = paginator.NextPage(context.Background()); err == nil; {
 		for _, obj := range page.Contents {
 			fmt.Println(*obj.Key)
 			if strings.Contains(*obj.Key, filename) {
-				buf := aws.NewWriteAtBuffer([]byte{})
-				_, err := s3d.downloader.Download(buf, &s3.GetObjectInput{
+				buf := manager.NewWriteAtBuffer([]byte{})
+				_, err := s3d.downloader.Download(context.Background(), buf, &s3.GetObjectInput{
 					Bucket: &s3d.bucket,
 					Key:    obj.Key,
 				})
@@ -126,7 +129,6 @@ func (s3d *s3Downloader) getFileContent(t *testing.T, filename string) ([]byte, 
 			}
 		}
 	}
-	err := paginator.Err()
 	if err != nil {
 		return nil, fmt.Errorf("pagination error: %w", err)
 	}

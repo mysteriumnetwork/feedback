@@ -17,6 +17,10 @@ func (m *mockReporter) ReportIssue(report *Report) (issueId string, err error) {
 	return "12", nil
 }
 
+func (m *mockReporter) GetBugReportMessage(report *Report) (message string, err error) {
+	return "test message 123", nil
+}
+
 type mockUploader struct{}
 
 func (m *mockUploader) Upload(filepath string) (url *url.URL, err error) {

@@ -1,14 +1,14 @@
-FROM golang:1.17.6-alpine3.15 AS builder
+FROM golang:1.21-alpine AS builder
 
 # Install packages
-RUN apk add --no-cache bash gcc musl-dev git curl
+RUN apk add --no-cache bash gcc musl-dev linux-headers git curl
 
 # Compile application
 WORKDIR /src
 ADD . .
 RUN go run mage.go -v build
 
-FROM alpine:3.15
+FROM alpine:3.17
 
 # Install application
 COPY --from=builder /src/build/feedback /usr/bin/feedback

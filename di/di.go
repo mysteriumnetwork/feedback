@@ -3,12 +3,11 @@ package di
 import (
 	"sync"
 
-	log "github.com/cihub/seelog"
-	"github.com/mysteriumnetwork/feedback/docs"
 	"github.com/mysteriumnetwork/feedback/feedback"
 	"github.com/mysteriumnetwork/feedback/infra"
 	"github.com/mysteriumnetwork/feedback/params"
 	"github.com/mysteriumnetwork/feedback/server"
+	"github.com/rs/zerolog/log"
 )
 
 // Container represents our dependency container
@@ -27,7 +26,7 @@ func (c *Container) ConstructServer(gparams params.Generic, eparams params.Envir
 		Bucket:      *eparams.EnvAWSBucket,
 	})
 	if err != nil {
-		_ = log.Critical("Failed to initialize storage: ", err)
+		log.Fatal().Err(err).Msg("Failed to initialize storage")
 		return nil, err
 	}
 
@@ -48,7 +47,6 @@ func (c *Container) ConstructServer(gparams params.Generic, eparams params.Envir
 	srvr := server.New(
 		feedback.NewEndpoint(githubReporter, intercomReporter, storage, rateLimiter),
 		infra.NewPingEndpoint(),
-		docs.NewEndpoint(),
 	)
 
 	return srvr, nil

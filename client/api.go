@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"time"
 )
@@ -71,7 +72,7 @@ func (f *FeedbackAPI) CreateIntercomIssue(request CreateIntercomIssueRequest) (r
 }
 
 func newCreateGithubIssueRequest(uri string, req CreateGithubIssueRequest) (multipartReq *http.Request, err error) {
-	fileContent, err := ioutil.ReadFile(req.Filepath)
+	fileContent, err := os.ReadFile(req.Filepath)
 	if err != nil {
 		return nil, fmt.Errorf("could not read input file: %w", err)
 	}
@@ -101,7 +102,7 @@ func newCreateGithubIssueRequest(uri string, req CreateGithubIssueRequest) (mult
 }
 
 func newCreateIntercomIssueRequest(uri string, req CreateIntercomIssueRequest) (multipartReq *http.Request, err error) {
-	fileContent, err := ioutil.ReadFile(req.Filepath)
+	fileContent, err := os.ReadFile(req.Filepath)
 	if err != nil {
 		return nil, fmt.Errorf("could not read input file: %w", err)
 	}
@@ -178,7 +179,7 @@ type GithubIssueCreated struct {
 
 func parseCreateGithubIssueResult(httpRes *http.Response) (*CreateGithubIssueResult, error) {
 	res := &CreateGithubIssueResult{HTTPResponse: httpRes}
-	resJSON, err := ioutil.ReadAll(httpRes.Body)
+	resJSON, err := io.ReadAll(httpRes.Body)
 	if err != nil {
 		res.Success = false
 		res.Errors = singleErrorResponse("could not parse feedback response: " + err.Error())
@@ -207,7 +208,7 @@ func parseCreateGithubIssueResult(httpRes *http.Response) (*CreateGithubIssueRes
 
 func parseCreateIntercomIssueResult(httpRes *http.Response) (*CreateIntercomIssueResult, error) {
 	res := &CreateIntercomIssueResult{HTTPResponse: httpRes}
-	resJSON, err := ioutil.ReadAll(httpRes.Body)
+	resJSON, err := io.ReadAll(httpRes.Body)
 	if err != nil {
 		res.Success = false
 		res.Errors = singleErrorResponse("could not parse feedback response: " + err.Error())

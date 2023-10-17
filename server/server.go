@@ -8,10 +8,11 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/cihub/seelog"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/mysteriumnetwork/feedback/docs"
 	"github.com/mysteriumnetwork/feedback/infra/apierror"
+	"github.com/rs/zerolog/log"
 )
 
 type routes interface {
@@ -42,6 +43,7 @@ func (s *Server) Serve() error {
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, apierror.NewMsg("resource not found").ToResponse())
 	})
+	docs.NewSwagger().AttachHandlers(r)
 
 	v1 := r.Group("/api/v1")
 	{
@@ -104,13 +106,9 @@ func Logger(ignorePaths ...string) gin.HandlerFunc {
 			path = path + "?" + raw
 		}
 
-		log.Infof("[GIN] %3d | %13v | %15s | %-7s | %v %v",
-			statusCode,
-			latency,
-			clientIP,
-			method,
-			path,
-			comment,
-		)
+		log.Debug().Int("status", statusCode).Str("method", method).
+			Str("path", path).Str("client_ip", clientIP).
+			Dur("latency", latency).Str("comment", comment).
+			Msg("gin request logged")
 	}
 }

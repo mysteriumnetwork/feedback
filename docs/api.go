@@ -2,24 +2,31 @@ package docs
 
 import (
 	"github.com/gin-gonic/gin"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// Endpoint API documentation endpoint
-type Endpoint struct {
+// Swagger object
+type Swagger struct{}
+
+var docsHandler = ginSwagger.WrapHandler(swaggerfiles.Handler)
+
+// NewSwaggerHandler creates a new handler for swagger docs
+func NewSwagger() *Swagger {
+	return &Swagger{}
 }
 
-// NewEndpoint creates new Endpoint
-func NewEndpoint() *Endpoint {
-	return &Endpoint{}
+// Index redirects root route to swagger docs
+func (s *Swagger) Index(context *gin.Context) {
+	context.Redirect(301, "/swagger/index.html")
 }
 
-// SwaggerJSON return API schema
-func (e *Endpoint) SwaggerJSON(c *gin.Context) {
-	c.Writer.Write(MustAsset(SwaggerJSONFilepath))
-	c.Status(200)
+// Docs use ginSwagger middleware to serve the API docs
+func (s *Swagger) Docs(context *gin.Context) {
+	docsHandler(context)
 }
 
-// RegisterRoutes registers API documentation routes
-func (e *Endpoint) RegisterRoutes(r gin.IRoutes) {
-	r.GET("/swagger.json", e.SwaggerJSON)
+func (s *Swagger) AttachHandlers(g *gin.Engine) {
+	g.GET("/", s.Index)
+	g.GET("/swagger/*any", s.Docs)
 }

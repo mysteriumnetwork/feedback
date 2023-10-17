@@ -2,12 +2,13 @@ package ci
 
 import (
 	"fmt"
+	"os"
 	"time"
 
-	"github.com/cihub/seelog"
 	"github.com/magefile/mage/sh"
 	"github.com/mysteriumnetwork/feedback/di"
 	"github.com/mysteriumnetwork/feedback/params"
+	"github.com/rs/zerolog"
 )
 
 // E2E runs the e2e tests
@@ -22,7 +23,7 @@ func E2E() error {
 	// TODO: ping s3-mock and wiremock and await startup, it is very slow in the pipeline
 	time.Sleep(time.Second * 10)
 
-	logLevel := seelog.DebugStr
+	logLevel := zerolog.DebugLevel.String()
 	requestsPerSecond := 9999999999.0
 	logProxyBaseUrl := "http://someweb.com"
 	gparams := params.Generic{
@@ -46,6 +47,16 @@ func E2E() error {
 		EnvGithubAccessToken:   &envGithubAccessToken,
 		EnvGithubOwner:         &envGithubOwner,
 		EnvGithubRepository:    &envGithubRepository,
+	}
+
+	//set mock env vars
+	err = os.Setenv("AWS_ACCESS_KEY_ID", "test_key_id")
+	if err != nil {
+		return err
+	}
+	err = os.Setenv("AWS_SECRET_ACCESS_KEY", "test_secret_key")
+	if err != nil {
+		return err
 	}
 
 	fmt.Println("starting server...")

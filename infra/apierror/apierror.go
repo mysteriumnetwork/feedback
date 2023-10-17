@@ -3,7 +3,6 @@ package apierror
 import "fmt"
 
 // APIErrorResponse represent HTTP error payload
-// swagger:model
 type APIErrorResponse struct {
 	Errors []APIError `json:"errors"`
 }
@@ -11,7 +10,7 @@ type APIErrorResponse struct {
 // APIError represents a single error in an APIErrorResponse
 type APIError struct {
 	Message string `json:"message"`
-	Cause   error
+	Cause   error  `json:"-"`
 }
 
 // New creates a new APIError

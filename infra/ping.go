@@ -18,16 +18,15 @@ func NewPingEndpoint() *PingEndpoint {
 	return &PingEndpoint{}
 }
 
-// Ping responds to ping
-// swagger:operation GET /ping ping
-// ---
-// summary: Responds to ping
-// responses:
-//   '200':
-//     description: Ping successful
-//     schema:
-//       "$ref": "#/definitions/Ping"
+// Ping check service health
 //
+// @Tags health
+// @Summary Check service health
+// @Description Endpoint is meant to check service health and returns pong response for every request
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} infra.Ping
+// @Router /v1/ping [get]
 func (p *PingEndpoint) Ping(c *gin.Context) {
 	c.JSON(200, Ping{"pong"})
 }

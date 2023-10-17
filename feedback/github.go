@@ -94,7 +94,7 @@ func (rep *GithubReporter) ReportIssue(report *Report) (issueId string, err erro
 		Description:     report.Description,
 		Email:           report.Email,
 		Identity:        report.NodeIdentity,
-		Timestamp:       time.Now().String(),
+		Timestamp:       time.Now().Format("2006-01-02 15:04:05"),
 		LogKey:          key,
 		LogProxyBaseUrl: rep.logProxyBaseUrl,
 	}

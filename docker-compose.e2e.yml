@@ -5,7 +5,7 @@ services:
     ports: 
       - '8090:8080'
   s3-mock:
-    image: adobe/s3mock:2.4.6
+    image: adobe/s3mock:3.1.0
     ports:
       - 9090:9090
     environment:
