@@ -6,6 +6,7 @@ RUN apk add --no-cache bash gcc musl-dev linux-headers git curl
 # Compile application
 WORKDIR /src
 ADD . .
+RUN go mod tidy
 RUN go run mage.go -v build
 
 FROM alpine:3.17
