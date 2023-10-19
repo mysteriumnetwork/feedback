@@ -20,6 +20,7 @@ require (
 	github.com/magefile/mage v1.15.0
 	github.com/mailru/easyjson v0.7.7
 	github.com/mysteriumnetwork/go-ci v0.0.0-20220711082519-1245471bae0d
+	github.com/mysteriumnetwork/go-rest v0.3.1
 	github.com/mysteriumnetwork/logger v0.0.9
 	github.com/rs/zerolog v1.31.0
 	github.com/stretchr/testify v1.8.4

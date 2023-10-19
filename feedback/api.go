@@ -203,7 +203,7 @@ func ParseIntercomIssueRequest(c *gin.Context) (CreateIntercomIssueRequest, []er
 // @Success 200 {object} feedback.CreateIntercomIssueResponse
 // @Failure 400 {object} apierror.APIErrorResponse
 // @Failure 429
-// @Failure 500 {object} apierror.APIErrorResponse
+// @Failure 503 {object} apierror.APIErrorResponse
 // @Router /v1/intercom [post]
 // @Deprecated
 func (e *Endpoint) CreateIntercomIssue(c *gin.Context) {
@@ -313,7 +313,7 @@ type CreateBugReportResponse struct {
 // @Success 200 {object} feedback.CreateBugReportResponse
 // @Failure 400 {object} apierror.APIErrorResponse
 // @Failure 429
-// @Failure 500 {object} apierror.APIErrorResponse
+// @Failure 503 {object} apierror.APIErrorResponse
 // @Router /v1/bug-report [post]
 func (e *Endpoint) CreateBugReport(c *gin.Context) {
 	form, requestErrs := ParseBugReportRequest(c)

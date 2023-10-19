@@ -234,7 +234,7 @@ func TestIntercomReporting(t *testing.T) {
 		_, apiErr, err := apiClient.CreateIntercomIssue(*req, f.Name())
 		assert.Nil(t, err)
 		assert.NotNil(t, apiErr)
-		assert.Contains(t, apiErr.Errors[0].Message, "could not create intercom conversation")
+		assert.Contains(t, apiErr.Message(), "service unavailable")
 	})
 
 	t.Run("report an issue on intercom with email", func(t *testing.T) {

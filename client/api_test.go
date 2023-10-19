@@ -134,7 +134,7 @@ func TestApi(t *testing.T) {
 			if test.fails {
 				assert.NotNil(t, apierr)
 				assert.Nil(t, err)
-				assert.Contains(t, apierr.Errors[0].Message, test.errorContains)
+				assert.Contains(t, apierr.Message(), test.errorContains)
 			} else {
 				assert.NotNil(t, resp)
 				assert.Nil(t, apierr)

@@ -10,10 +10,12 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/mysteriumnetwork/feedback/feedback"
 	"github.com/mysteriumnetwork/feedback/infra/apierror"
+	apierr "github.com/mysteriumnetwork/go-rest/apierror"
 )
 
 const basePath = "/api/v1"
@@ -47,7 +49,7 @@ func (f *FeedbackAPI) apiURL(apiPath string) string {
 }
 
 // CreateGithubIssue creates a github issue
-func (f *FeedbackAPI) CreateGithubIssue(request feedback.CreateGithubIssueRequest, logFilePath string) (*feedback.CreateGithubIssueResponse, *apierror.APIErrorResponse, error) {
+func (f *FeedbackAPI) CreateGithubIssue(request feedback.CreateGithubIssueRequest, logFilePath string) (*feedback.CreateGithubIssueResponse, *apierr.APIError, error) {
 	multipartReq := newMultipartRequest()
 	err := multipartReq.addFileToMultipart("file", logFilePath)
 	if err != nil {
@@ -83,7 +85,7 @@ func (f *FeedbackAPI) CreateGithubIssue(request feedback.CreateGithubIssueReques
 }
 
 // CreateIntercomIssue creates a intercom issue
-func (f *FeedbackAPI) CreateIntercomIssue(request feedback.CreateIntercomIssueRequest, logFilePath string) (*feedback.CreateIntercomIssueResponse, *apierror.APIErrorResponse, error) {
+func (f *FeedbackAPI) CreateIntercomIssue(request feedback.CreateIntercomIssueRequest, logFilePath string) (*feedback.CreateIntercomIssueResponse, *apierr.APIError, error) {
 	multipartReq := newMultipartRequest()
 	err := multipartReq.addFileToMultipart("file", logFilePath)
 	if err != nil {
@@ -119,7 +121,7 @@ func (f *FeedbackAPI) CreateIntercomIssue(request feedback.CreateIntercomIssueRe
 }
 
 // CreateBugReport creates a bug report
-func (f *FeedbackAPI) CreateBugReport(request feedback.CreateBugReportRequest, logFilePath string) (*feedback.CreateBugReportResponse, *apierror.APIErrorResponse, error) {
+func (f *FeedbackAPI) CreateBugReport(request feedback.CreateBugReportRequest, logFilePath string) (*feedback.CreateBugReportResponse, *apierr.APIError, error) {
 	multipartReq := newMultipartRequest()
 	err := multipartReq.addFileToMultipart("file", logFilePath)
 	if err != nil {
@@ -263,18 +265,31 @@ func (mr *multipartRequest) finalize() (*bytes.Buffer, string, error) {
 	return mr.buffer, mr.writer.FormDataContentType(), nil
 }
 
-func parseResponse(resp *http.Response, v any) (*apierror.APIErrorResponse, error) {
+func parseResponse(resp *http.Response, v any) (*apierr.APIError, error) {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("could read response: %w", err)
 	}
 	if resp.StatusCode >= 400 {
-		apierror := apierror.APIErrorResponse{}
-		err = json.Unmarshal(body, &apierror)
-		if err != nil {
-			return nil, fmt.Errorf("could not parse error response: %w", err)
+
+		switch resp.StatusCode {
+		case http.StatusBadRequest:
+			apierror := apierror.APIErrorResponse{}
+			err = json.Unmarshal(body, &apierror)
+			if err != nil {
+				return nil, fmt.Errorf("could not parse error response: %w", err)
+			}
+			errors := make([]string, len(apierror.Errors))
+			for i, err := range apierror.Errors {
+				errors[i] = err.Message
+			}
+			return apierr.BadRequest(strings.Join(errors, ", "), "bad_request"), nil
+		case http.StatusTooManyRequests:
+			return apierr.Error(http.StatusTooManyRequests, "too many requests", "too_many_requests"), nil
+		case http.StatusServiceUnavailable:
+			return apierr.Error(http.StatusServiceUnavailable, "service unavailable", "service_unavailable"), nil
 		}
-		return &apierror, nil
+		return apierr.InternalDefault(), nil
 	}
 	err = json.Unmarshal(body, v)
 	if err != nil {
