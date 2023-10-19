@@ -1,6 +1,6 @@
 module github.com/mysteriumnetwork/feedback
 
-go 1.21
+go 1.19
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.21.2
@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.91
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.40.2
 	github.com/didip/tollbooth/v5 v5.2.0
-	github.com/ethereum/go-ethereum v1.13.3
+	github.com/ethereum/go-ethereum v1.10.17
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -20,6 +20,7 @@ require (
 	github.com/magefile/mage v1.15.0
 	github.com/mailru/easyjson v0.7.7
 	github.com/mysteriumnetwork/go-ci v0.0.0-20220711082519-1245471bae0d
+	github.com/mysteriumnetwork/go-rest v0.3.1
 	github.com/mysteriumnetwork/logger v0.0.9
 	github.com/rs/zerolog v1.31.0
 	github.com/stretchr/testify v1.8.4
