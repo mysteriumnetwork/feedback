@@ -6,6 +6,7 @@ import (
 
 	"github.com/mysteriumnetwork/feedback/feedback"
 	"github.com/mysteriumnetwork/feedback/infra"
+	"github.com/mysteriumnetwork/feedback/metrics"
 	"github.com/mysteriumnetwork/feedback/params"
 	"github.com/mysteriumnetwork/feedback/server"
 	"github.com/rs/zerolog/log"
@@ -21,6 +22,11 @@ type Container struct {
 func (c *Container) ConstructServer(gparams params.Generic, eparams params.Environment) (*server.Server, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+
+	if err := metrics.InitMetrics(); err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize metrics")
+		return nil, err
+	}
 
 	storage, err := feedback.New(&feedback.NewStorageOpts{
 		EndpointURL: *eparams.EnvAWSEndpointURL,
