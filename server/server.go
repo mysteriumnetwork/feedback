@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mysteriumnetwork/feedback/docs"
 	"github.com/mysteriumnetwork/feedback/infra/apierror"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 )
 
@@ -37,9 +38,14 @@ func New(routes ...routes) *Server {
 // Serve starts API server
 func (s *Server) Serve() error {
 	r := gin.New()
+
 	r.Use(gin.Recovery())
 	r.Use(Logger("/api/v1/ping"))
 	r.Use(cors.Default())
+	r.Use(HandlerMetrics)
+
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, apierror.NewMsg("resource not found").ToResponse())
 	})
@@ -56,6 +62,7 @@ func (s *Server) Serve() error {
 	if port == "" {
 		port = "8080"
 	}
+
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%v", port),
 		Handler: r,
