@@ -30,6 +30,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gofrs/uuid"
+
 	"github.com/mysteriumnetwork/feedback/constants"
 )
 
@@ -72,7 +73,7 @@ func New(opts *NewStorageOpts) (storage *Storage, err error) {
 }
 
 // Upload uploads file to storage and returns its URL
-func (s *Storage) Upload(filepath string) (url *url.URL, err error) {
+func (s *Storage) Upload(filepath string) (*url.URL, error) {
 	file, err := os.Open(filepath)
 	if err != nil {
 		return nil, fmt.Errorf("could not open file for reading %q: %w", filepath, err)
@@ -88,7 +89,6 @@ func (s *Storage) Upload(filepath string) (url *url.URL, err error) {
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(fileKey),
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("could not upload file %q: %w", filepath, err)
 	}
