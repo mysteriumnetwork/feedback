@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/magefile/mage/sh"
+	"github.com/rs/zerolog"
+
 	"github.com/mysteriumnetwork/feedback/di"
 	"github.com/mysteriumnetwork/feedback/params"
-	"github.com/rs/zerolog"
 )
 
 // E2E runs the e2e tests
@@ -51,7 +52,7 @@ func E2E() error {
 		EnvGithubRepository:    &envGithubRepository,
 	}
 
-	//set mock env vars
+	// set mock env vars
 	err = os.Setenv("AWS_ACCESS_KEY_ID", "test_key_id")
 	if err != nil {
 		return err
@@ -84,9 +85,9 @@ func E2E() error {
 }
 
 func startCompose() (string, error) {
-	return sh.Output("docker-compose", "-f", "docker-compose.e2e.yml", "up", "-d")
+	return sh.Output("docker", "compose", "-f", "docker-compose.e2e.yml", "up", "-d")
 }
 
 func teardownCompose() (string, error) {
-	return sh.Output("docker-compose", "-f", "docker-compose.e2e.yml", "down")
+	return sh.Output("docker", "compose", "-f", "docker-compose.e2e.yml", "down")
 }
