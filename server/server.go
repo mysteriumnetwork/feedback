@@ -39,7 +39,7 @@ func New(routes ...routes) *Server {
 func (s *Server) Serve() error {
 	r := gin.New()
 
-	r.Use(gin.Recovery())
+	r.Use(gin.RecoveryWithWriter(log.Logger))
 	r.Use(Logger("/api/v1/ping"))
 	r.Use(cors.Default())
 	r.Use(HandlerMetrics)
@@ -113,7 +113,13 @@ func Logger(ignorePaths ...string) gin.HandlerFunc {
 			path = path + "?" + raw
 		}
 
-		log.Debug().Int("status", statusCode).Str("method", method).
+		event := log.Debug()
+		if statusCode >= 500 {
+			event = log.Error()
+		} else if statusCode >= 400 {
+			event = log.Warn()
+		}
+		event.Int("status", statusCode).Str("method", method).
 			Str("path", path).Str("client_ip", clientIP).
 			Dur("latency", latency).Str("comment", comment).
 			Msg("gin request logged")
