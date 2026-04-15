@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/mysteriumnetwork/feedback/feedback"
 	"github.com/mysteriumnetwork/feedback/infra/apierror"
 	apierr "github.com/mysteriumnetwork/go-rest/apierror"
@@ -273,15 +271,12 @@ func parseResponse(resp *http.Response, v any) (*apierr.APIError, error) {
 		return nil, fmt.Errorf("could read response: %w", err)
 	}
 
-	log.Debug().Int("status_code", resp.StatusCode).Str("body", string(body)).Msg("parseResponse: received response")
-
 	if resp.StatusCode >= 400 {
 		switch resp.StatusCode {
 		case http.StatusBadRequest:
 			apierror := apierror.APIErrorResponse{}
 			err = json.Unmarshal(body, &apierror)
 			if err != nil {
-				log.Debug().Err(err).Str("body", string(body)).Msg("parseResponse: could not parse error response")
 				return nil, fmt.Errorf("could not parse error response: %w", err)
 			}
 			errors := make([]string, len(apierror.Errors))
@@ -289,24 +284,19 @@ func parseResponse(resp *http.Response, v any) (*apierr.APIError, error) {
 				errors[i] = err.Message
 			}
 
-			log.Debug().Strs("errors", errors).Msg("parseResponse: bad request errors")
-
 			return apierr.BadRequest(strings.Join(errors, ", "), "bad_request"), nil
 		case http.StatusTooManyRequests:
-			log.Debug().Msg("parseResponse: too many requests")
 			return apierr.Error(http.StatusTooManyRequests, "too many requests", "too_many_requests"), nil
 		case http.StatusServiceUnavailable:
-			log.Debug().Msg("parseResponse: service unavailable")
 			return apierr.Error(http.StatusServiceUnavailable, "service unavailable", "service_unavailable"), nil
 		}
-		log.Debug().Int("status_code", resp.StatusCode).Msg("parseResponse: unhandled error status, returning internal default")
+
 		return apierr.InternalDefault(), nil
 	}
 	err = json.Unmarshal(body, v)
 	if err != nil {
-		log.Debug().Err(err).Str("body", string(body)).Msg("parseResponse: could not parse success response")
 		return nil, fmt.Errorf("could not parse response: %w", err)
 	}
-	log.Debug().Msg("parseResponse: successfully parsed response")
+
 	return nil, nil
 }
